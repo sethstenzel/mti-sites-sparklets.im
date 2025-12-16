@@ -53,5 +53,5 @@ Access uploaded images directly.
 
 **Example:**
 ```
-http://localhost:8000/contents/imgs/demo.jpg
+http://localhost:18002/contents/imgs/demo.jpg
 ```

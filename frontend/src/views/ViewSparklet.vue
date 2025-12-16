@@ -34,7 +34,8 @@ const error = ref(null)
 
 const imageUrl = computed(() => {
   if (!sparklet.value) return ''
-  return `http://localhost:8000/contents/imgs/${sparklet.value.image_filename}`
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:18002'
+  return `${API_BASE_URL}/contents/imgs/${sparklet.value.image_filename}`
 })
 
 onMounted(async () => {

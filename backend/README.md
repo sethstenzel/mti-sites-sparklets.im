@@ -29,13 +29,13 @@ Or use uvicorn directly:
 uv run uvicorn main:app --reload
 ```
 
-The API will be available at http://localhost:8000
+The API will be available at http://localhost:18002
 
 ## API Documentation
 
 Once running, visit:
-- Swagger UI: http://localhost:8000/docs
-- ReDoc: http://localhost:8000/redoc
+- Swagger UI: http://localhost:18002/docs
+- ReDoc: http://localhost:18002/redoc
 
 ## Development
 

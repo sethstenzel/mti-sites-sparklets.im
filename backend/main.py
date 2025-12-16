@@ -45,7 +45,7 @@ async def health_check():
     return {"status": "healthy"}
 
 
-@app.get("/sparklets")
+@app.get("/api/sparklets")
 async def get_all_sparklets():
     with get_db() as conn:
         cursor = conn.execute(
@@ -69,7 +69,7 @@ async def get_all_sparklets():
         ]
 
 
-@app.get("/sparklets/{sparklet_id}")
+@app.get("/api/sparklets/{sparklet_id}")
 async def get_sparklet(sparklet_id: int):
     with get_db() as conn:
         cursor = conn.execute(
@@ -93,7 +93,7 @@ async def get_sparklet(sparklet_id: int):
         }
 
 
-@app.post("/sparklets")
+@app.post("/api/sparklets")
 async def create_sparklet(
     to_name: str = Form(...),
     from_name: str = Form(...),
@@ -127,7 +127,7 @@ async def create_sparklet(
     return {"id": sparklet_id, "message": "Sparklet created successfully"}
 
 
-@app.put("/sparklets/{sparklet_id}")
+@app.put("/api/sparklets/{sparklet_id}")
 async def update_sparklet(
     sparklet_id: int,
     to_name: str = Form(...),
@@ -180,7 +180,7 @@ async def update_sparklet(
     return {"id": sparklet_id, "message": "Sparklet updated successfully"}
 
 
-@app.delete("/sparklets/{sparklet_id}")
+@app.delete("/api/sparklets/{sparklet_id}")
 async def delete_sparklet(sparklet_id: int):
     with get_db() as conn:
         # First, get the sparklet to find the image filename
