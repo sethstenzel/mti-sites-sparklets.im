@@ -97,7 +97,7 @@ status() {
 
     echo ""
     echo "Health Check:"
-    curl -s http://127.0.0.1:8000/health || echo "Backend not responding"
+    curl -s http://127.0.0.1:18002/health || echo "Backend not responding"
 }
 
 case "$1" in

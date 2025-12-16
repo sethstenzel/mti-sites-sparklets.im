@@ -16,7 +16,7 @@ This guide walks you through deploying Sparklets.IM on your VPS alongside the ex
 
 ```
 Internet → Nginx (443/HTTPS)
-           ├─ sparklets.im/api → Backend (127.0.0.1:8000)
+           ├─ sparklets.im/api → Backend (127.0.0.1:18002)
            ├─ sparklets.im/contents → Static uploads
            └─ sparklets.im/ → Frontend (Vue dist/)
 
@@ -71,7 +71,7 @@ uv run python seed_demo.py
 
 # Test backend locally
 uv run python main.py
-# In another terminal: curl http://127.0.0.1:8000/health
+# In another terminal: curl http://127.0.0.1:18002/health
 # Should return: {"status":"healthy"}
 # Press Ctrl+C to stop the test
 ```
@@ -207,8 +207,8 @@ chmod +x /var/www/sparklets.im/deployment/deploy.sh
 # Check logs
 sudo journalctl -u sparklets-backend -n 100
 
-# Check if port 8000 is already in use
-sudo lsof -i :8000
+# Check if port 18002 is already in use
+sudo lsof -i :18002
 
 # Check file permissions
 ls -la /var/www/sparklets.im/backend/
@@ -249,7 +249,7 @@ sudo nginx -t
 # Verify ALLOWED_ORIGINS in systemd service file
 
 # Test backend directly
-curl http://127.0.0.1:8000/api/health
+curl http://127.0.0.1:18002/api/health
 
 # Check nginx proxy configuration
 sudo nginx -t
@@ -373,7 +373,7 @@ sudo systemctl reload nginx
 
 | Service | Internal Port | External Access |
 |---------|--------------|-----------------|
-| Sparklets Backend | 127.0.0.1:8000 | Via nginx proxy only |
+| Sparklets Backend | 127.0.0.1:18002 | Via nginx proxy only |
 | Sparklets Frontend | N/A (static files) | Via nginx on 443 |
 | sethstenzel.me | 127.0.0.1:18001 | Via nginx on 443 |
 | Nginx HTTPS | 0.0.0.0:443 | Public |

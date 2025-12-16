@@ -15,7 +15,7 @@ app = FastAPI(
 
 # Configure CORS
 import os
-ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173").split(",")
+ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:18003").split(",")
 
 app.add_middleware(
     CORSMiddleware,
@@ -206,4 +206,4 @@ async def delete_sparklet(sparklet_id: int):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("main:app", host="0.0.0.0", port=18002, reload=True)
