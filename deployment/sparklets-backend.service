@@ -1,0 +1,29 @@
+[Unit]
+Description=Sparklets.IM Backend API
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=appsuser
+WorkingDirectory=/var/www/sparklets.im/backend
+Environment="ALLOWED_ORIGINS=https://sparklets.im,https://www.sparklets.im"
+Environment="BACKEND_PORT=8000"
+Environment="BACKEND_HOST=127.0.0.1"
+ExecStart=/var/www/sparklets.im/backend/.venv/bin/uvicorn main:app --host 127.0.0.1 --port 8000 --log-level info
+
+Restart=always
+RestartSec=10
+StandardOutput=append:/var/www/sparklets.im/logs/backend.log
+StandardError=append:/var/www/sparklets.im/logs/backend.err
+
+# Security settings
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/var/www/sparklets.im/backend/contents
+ReadWritePaths=/var/www/sparklets.im/backend/sparklets.sqlite
+
+[Install]
+WantedBy=multi-user.target
