@@ -129,7 +129,7 @@ async def get_sparklet(sparklet_id: int):
 async def create_sparklet(
     to_name: str = Form(...),
     from_name: str = Form(...),
-    message: str = Form(..., max_length=140),
+    message: str = Form(..., max_length=100),
     background_color: str = Form(default="#f0f0f0"),
     card_color: str = Form(default="#ffffff"),
     text_color: str = Form(default="#333333"),
@@ -172,7 +172,7 @@ async def update_sparklet(
     sparklet_id: int,
     to_name: str = Form(...),
     from_name: str = Form(...),
-    message: str = Form(..., max_length=140),
+    message: str = Form(..., max_length=100),
     background_color: str = Form(default="#f0f0f0"),
     card_color: str = Form(default="#ffffff"),
     text_color: str = Form(default="#333333"),

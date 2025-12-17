@@ -31,11 +31,11 @@
         </div>
 
         <div class="form-group">
-          <label for="message">Message ({{ formData.message.length }}/140):</label>
+          <label for="message">Message ({{ formData.message.length }}/100):</label>
           <textarea
             id="message"
             v-model="formData.message"
-            maxlength="140"
+            maxlength="100"
             required
             rows="4"
             placeholder="Write your message here..."
@@ -123,9 +123,6 @@
             </div>
 
             <div class="action-buttons">
-              <button @click="downloadSparkletImage" class="action-btn download-btn">
-                📥 Download Sparklet
-              </button>
               <button @click="downloadShareQR" class="action-btn qr-btn">
                 📱 Download Share QR Code
               </button>
@@ -185,8 +182,8 @@
           <div class="preview-message-section" :style="{ color: formData.text_color }">
             <p class="preview-message">{{ formData.message || 'Your message will appear here...' }}</p>
             <div class="preview-metadata">
-              <p class="preview-from">From: {{ formData.from_name || 'Your name' }}</p>
-              <p class="preview-to">To: {{ formData.to_name || 'Recipient name' }}</p>
+              <span class="preview-to">To: {{ formData.to_name || 'Recipient name' }}</span>
+              <span class="preview-from">From: {{ formData.from_name || 'Your name' }}</span>
             </div>
           </div>
         </div>
@@ -414,27 +411,6 @@ const generateQRCode = async () => {
   }
 }
 
-const downloadSparkletImage = async () => {
-  try {
-    const previewCard = document.querySelector('.sparklet-preview')
-    if (!previewCard) return
-
-    const canvas = await html2canvas(previewCard, {
-      backgroundColor: null,
-      scale: 2,
-      logging: false
-    })
-
-    const link = document.createElement('a')
-    link.download = `sparklet-${createdId.value}.png`
-    link.href = canvas.toDataURL('image/png')
-    link.click()
-  } catch (err) {
-    console.error('Failed to download sparklet:', err)
-    error.value = 'Failed to download sparklet image'
-  }
-}
-
 const downloadShareQR = () => {
   if (!qrCodeUrl.value) return
 
@@ -509,6 +485,7 @@ const copyToClipboard = async (text) => {
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  font-size: clamp(0.5rem, 2vw, 1rem);
 }
 
 .sparklet-preview:hover {
@@ -538,10 +515,10 @@ const copyToClipboard = async (text) => {
 
 .image-controls {
   position: absolute;
-  bottom: 0.5rem;
-  right: 0.5rem;
+  bottom: 0.5em;
+  right: 0.5em;
   display: flex;
-  gap: 0.25rem;
+  gap: 0.25em;
   z-index: 10;
 }
 
@@ -549,8 +526,8 @@ const copyToClipboard = async (text) => {
   background: rgba(255, 255, 255, 0.9);
   border: 1px solid #ddd;
   border-radius: 4px;
-  padding: 0.25rem 0.5rem;
-  font-size: 0.9rem;
+  padding: 0.25em 0.5em;
+  font-size: 0.9em;
   cursor: pointer;
   transition: all 0.2s;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
@@ -575,53 +552,55 @@ const copyToClipboard = async (text) => {
   justify-content: center;
   color: #999;
   text-align: center;
+  font-size: 1em;
 }
 
 .placeholder-image span {
-  font-size: 4rem;
-  margin-bottom: 0.5rem;
+  font-size: 4em;
+  margin-bottom: 0.5em;
 }
 
 .placeholder-image p {
   margin: 0;
-  font-size: 0.9rem;
+  font-size: 0.9em;
 }
 
 .preview-message-section {
   flex: 1;
-  padding: 1rem;
+  padding: 1em;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   position: relative;
   z-index: 1;
+  font-family: 'Kalam', cursive;
 }
 
 .preview-message {
-  font-size: 0.945rem;
+  font-size: 0.945em;
   line-height: 1.4;
-  margin: 0 0 0.5rem 0;
+  margin: 0 0 0.5em 0;
   overflow-wrap: break-word;
   font-style: italic;
+  text-align: center;
 }
 
 .preview-metadata {
-  font-size: 0.75rem;
+  font-size: 0.75em;
   opacity: 0.8;
-}
-
-.preview-metadata p {
-  margin: 0.25rem 0;
+  display: flex;
+  justify-content: center;
+  gap: 1em;
 }
 
 .preview-from {
   font-weight: 600;
-  font-size: 0.7875rem;
+  font-size: 0.7875em;
 }
 
 .preview-to {
-  font-style: italic;
-  font-size: 0.7875rem;
+  font-weight: 600;
+  font-size: 0.7875em;
 }
 
 h1 {

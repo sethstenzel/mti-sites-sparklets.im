@@ -23,8 +23,8 @@
       <div class="message-section" :style="{ color: sparklet.text_color }">
         <p class="message">{{ sparklet.message }}</p>
         <div class="metadata">
-          <p class="from">From: {{ sparklet.from_name }}</p>
-          <p class="to">To: {{ sparklet.to_name }}</p>
+          <span class="to">To: {{ sparklet.to_name }}</span>
+          <span class="from">From: {{ sparklet.from_name }}</span>
         </div>
       </div>
     </div>
@@ -166,6 +166,7 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+  font-family: 'Kalam', cursive;
 }
 
 .message {
@@ -173,15 +174,15 @@ onMounted(async () => {
   line-height: 1.4;
   margin: 0 0 0.5rem 0;
   overflow-wrap: break-word;
+  text-align: center;
 }
 
 .metadata {
   font-size: 0.75rem;
   opacity: 0.8;
-}
-
-.metadata p {
-  margin: 0.25rem 0;
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
 }
 
 .from {
@@ -189,7 +190,7 @@ onMounted(async () => {
 }
 
 .to {
-  font-style: italic;
+  font-weight: 600;
 }
 
 @media (min-width: 768px) {

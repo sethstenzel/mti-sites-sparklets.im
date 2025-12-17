@@ -18,10 +18,13 @@
 
 <style scoped>
 header {
-  background: linear-gradient(135deg, #5568d3 0%, #633a8a 100%);
+  background: linear-gradient(135deg, #5568d3 0%, #e91e63 100%);
   color: white;
   padding: 1rem 2rem;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 h1 {
@@ -31,6 +34,8 @@ h1 {
 
 nav {
   margin-top: 1rem;
+  display: flex;
+  justify-content: center;
 }
 
 nav a {

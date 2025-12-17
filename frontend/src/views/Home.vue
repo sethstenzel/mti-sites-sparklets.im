@@ -24,7 +24,7 @@
       <div class="feature">
         <div class="feature-icon">💌</div>
         <h3>Share Messages</h3>
-        <p>Write up to 140 characters of heartfelt text</p>
+        <p>Write up to 100 characters of heartfelt text</p>
       </div>
     </div>
   </div>

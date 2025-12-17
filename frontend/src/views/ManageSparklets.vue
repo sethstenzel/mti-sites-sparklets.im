@@ -73,15 +73,15 @@
           </div>
 
           <div class="form-group">
-            <label for="edit_message">Message (140 chars):</label>
+            <label for="edit_message">Message (100 chars):</label>
             <textarea
               id="edit_message"
               v-model="editData.message"
-              maxlength="140"
+              maxlength="100"
               rows="3"
               required
             ></textarea>
-            <span class="char-count">{{ editData.message.length }}/140</span>
+            <span class="char-count">{{ editData.message.length }}/100</span>
           </div>
 
           <div class="form-group">
