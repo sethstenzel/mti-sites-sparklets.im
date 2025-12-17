@@ -184,7 +184,7 @@ const loadSparklets = async () => {
   try {
     loading.value = true
     error.value = null
-    const response = await axios.get(`${API_BASE_URL}/sparklets`)
+    const response = await axios.get(`${API_BASE_URL}/api/sparklets`)
     sparklets.value = response.data
   } catch (err) {
     console.error('Failed to load sparklets:', err)
