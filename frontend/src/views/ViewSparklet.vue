@@ -7,9 +7,18 @@
       <p>{{ error }}</p>
       <router-link to="/create" class="create-link">Create Your Own Sparklet</router-link>
     </div>
-    <div v-else-if="sparklet" class="sparklet-card" :style="{ backgroundColor: sparklet.card_color }">
+    <div v-else-if="sparklet" class="sparklet-card" :style="{
+      backgroundColor: sparklet.card_color,
+      transform: `rotate(${sparklet.card_rotation || 5}deg)`
+    }">
       <div class="image-section">
-        <img :src="imageUrl" :alt="`Sparklet from ${sparklet.from_name}`" />
+        <img
+          :src="imageUrl"
+          :alt="`Sparklet from ${sparklet.from_name}`"
+          :style="{
+            transform: `translate(${sparklet.image_offset_x || 0}px, ${sparklet.image_offset_y || 0}px) scale(${sparklet.image_scale || 1})`
+          }"
+        />
       </div>
       <div class="message-section" :style="{ color: sparklet.text_color }">
         <p class="message">{{ sparklet.message }}</p>
@@ -147,8 +156,8 @@ onMounted(async () => {
 
 .image-section img {
   width: 100%;
-  height: 100%;
   object-fit: cover;
+  transform-origin: center center;
 }
 
 .message-section {

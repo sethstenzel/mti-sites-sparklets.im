@@ -1,4 +1,4 @@
-# Sparklets.IM
+# Sparklets.im
 
 Website for making and sending QR code based message cards.
 

@@ -1,6 +1,6 @@
 <template>
   <div class="about">
-    <h2>About Sparklets.IM</h2>
+    <h2>About Sparklets.im</h2>
     <p>
       This is a full-stack application built with Vue 3 and FastAPI.
     </p>

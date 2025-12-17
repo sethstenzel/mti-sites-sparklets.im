@@ -1,11 +1,10 @@
 <template>
   <div id="app">
     <header>
-      <h1>Sparklets.IM</h1>
+      <h1>Sparklets.im</h1>
       <nav>
         <router-link to="/">Home</router-link>
         <router-link to="/create">Create</router-link>
-        <router-link to="/sparklet/1">Demo</router-link>
       </nav>
     </header>
     <main>

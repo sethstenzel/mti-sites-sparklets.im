@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Sparklets.IM Deployment Script
+# Sparklets.im Deployment Script
 # Usage: ./deploy.sh [install|update|restart|logs|status]
 
 set -e
@@ -12,7 +12,7 @@ SERVICE_NAME="sparklets-backend"
 REPO_URL="https://github.com/yourusername/mti-sites-sparklets.im.git"  # Update with your repo URL
 
 install() {
-    echo "Installing Sparklets.IM..."
+    echo "Installing Sparklets.im..."
 
     # Create directories
     sudo mkdir -p $APP_DIR/{backend,frontend,logs}
@@ -58,7 +58,7 @@ install() {
 }
 
 update() {
-    echo "Updating Sparklets.IM..."
+    echo "Updating Sparklets.im..."
 
     # Pull latest changes
     cd $BACKEND_DIR
@@ -80,19 +80,19 @@ update() {
 }
 
 restart() {
-    echo "Restarting Sparklets.IM backend..."
+    echo "Restarting Sparklets.im backend..."
     sudo systemctl restart $SERVICE_NAME
     sleep 2
     status
 }
 
 logs() {
-    echo "Showing Sparklets.IM logs (Ctrl+C to exit)..."
+    echo "Showing Sparklets.im logs (Ctrl+C to exit)..."
     sudo journalctl -u $SERVICE_NAME -f
 }
 
 status() {
-    echo "Sparklets.IM Backend Status:"
+    echo "Sparklets.im Backend Status:"
     sudo systemctl status $SERVICE_NAME --no-pager
 
     echo ""

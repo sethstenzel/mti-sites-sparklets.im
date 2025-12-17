@@ -28,7 +28,10 @@ def init_db():
                 background_color TEXT NOT NULL,
                 card_color TEXT NOT NULL,
                 text_color TEXT NOT NULL,
-                card_rotation INTEGER DEFAULT 5
+                card_rotation INTEGER DEFAULT 5,
+                image_offset_x REAL DEFAULT 0,
+                image_offset_y REAL DEFAULT 0,
+                image_scale REAL DEFAULT 1
             )
         """)
         conn.commit()
@@ -39,4 +42,23 @@ def init_db():
             conn.commit()
         except sqlite3.OperationalError:
             # Column already exists
+            pass
+
+        # Migration: Add image position columns if they don't exist
+        try:
+            conn.execute("ALTER TABLE sparklets ADD COLUMN image_offset_x REAL DEFAULT 0")
+            conn.commit()
+        except sqlite3.OperationalError:
+            pass
+
+        try:
+            conn.execute("ALTER TABLE sparklets ADD COLUMN image_offset_y REAL DEFAULT 0")
+            conn.commit()
+        except sqlite3.OperationalError:
+            pass
+
+        try:
+            conn.execute("ALTER TABLE sparklets ADD COLUMN image_scale REAL DEFAULT 1")
+            conn.commit()
+        except sqlite3.OperationalError:
             pass

@@ -82,6 +82,19 @@
           </div>
         </div>
 
+        <div class="form-group">
+          <label for="card_rotation">Card Rotation: {{ formData.card_rotation }}°</label>
+          <input
+            id="card_rotation"
+            v-model.number="formData.card_rotation"
+            type="range"
+            min="-10"
+            max="10"
+            step="1"
+            class="rotation-slider"
+          />
+        </div>
+
         <button type="submit" :disabled="submitting" class="submit-btn">
           {{ submitting ? 'Creating...' : 'Create Sparklet' }}
         </button>
@@ -116,9 +129,9 @@
               <button @click="downloadShareQR" class="action-btn qr-btn">
                 📱 Download Share QR Code
               </button>
-              <router-link :to="`/sparklet/${createdId}`" class="action-btn view-btn">
+              <a :href="`/sparklet/${createdId}`" target="_blank" rel="noopener noreferrer" class="action-btn view-btn">
                 👁️ View Sparklet
-              </router-link>
+              </a>
             </div>
 
             <div v-if="qrCodeUrl" class="qr-preview">
@@ -133,13 +146,40 @@
 
     <div class="preview-wrapper">
       <h2>Preview</h2>
-      <div class="preview-container" :style="{ backgroundColor: formData.background_color }">
-        <div class="sparklet-preview" :style="{ backgroundColor: formData.card_color }">
-          <div class="preview-image-section">
-            <img v-if="imagePreview" :src="imagePreview" alt="Preview" />
+      <div class="preview-container">
+        <div class="sparklet-preview" :style="{
+          backgroundColor: formData.card_color,
+          transform: `rotate(${formData.card_rotation}deg)`
+        }">
+          <div
+            class="preview-image-section"
+            @mousedown="startDrag"
+            @mousemove="onDrag"
+            @mouseup="stopDrag"
+            @mouseleave="stopDrag"
+            @touchstart="startDrag"
+            @touchmove="onDrag"
+            @touchend="stopDrag"
+          >
+            <img
+              v-if="imagePreview"
+              :src="imagePreview"
+              alt="Preview"
+              :style="{
+                transform: `translate(${imagePosition.x}px, ${imagePosition.y}px) scale(${imagePosition.scale})`,
+                cursor: isDragging ? 'grabbing' : 'grab'
+              }"
+              class="draggable-image"
+              @dragstart.prevent
+            />
             <div v-else class="placeholder-image">
               <span>📸</span>
               <p>Upload an image</p>
+            </div>
+            <div v-if="imagePreview" class="image-controls">
+              <button type="button" @click="zoomIn" class="zoom-btn">🔍+</button>
+              <button type="button" @click="zoomOut" class="zoom-btn">🔍-</button>
+              <button type="button" @click="resetPosition" class="zoom-btn">↺</button>
             </div>
           </div>
           <div class="preview-message-section" :style="{ color: formData.text_color }">
@@ -171,7 +211,8 @@ const formData = ref({
   message: '',
   background_color: '#FFF8DC',
   card_color: '#FFFACD',
-  text_color: '#2F4F4F'
+  text_color: '#2F4F4F',
+  card_rotation: 5
 })
 
 const imageFile = ref(null)
@@ -181,6 +222,12 @@ const error = ref(null)
 const success = ref(false)
 const createdId = ref(null)
 const qrCodeUrl = ref(null)
+
+// Image positioning and dragging
+const imagePosition = ref({ x: 0, y: 0, scale: 1 })
+const isDragging = ref(false)
+const dragStart = ref({ x: 0, y: 0 })
+const originalImage = ref(null)
 
 const shareUrl = computed(() => {
   if (!createdId.value) return ''
@@ -196,9 +243,108 @@ const handleImageChange = (event) => {
     const reader = new FileReader()
     reader.onload = (e) => {
       imagePreview.value = e.target.result
+      originalImage.value = e.target.result
+      // Reset position when new image is loaded
+      imagePosition.value = { x: 0, y: 0, scale: 1 }
     }
     reader.readAsDataURL(file)
   }
+}
+
+// Drag and zoom functions
+const startDrag = (e) => {
+  if (!imagePreview.value) return
+  isDragging.value = true
+  const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX
+  const clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY
+  dragStart.value = {
+    x: clientX - imagePosition.value.x,
+    y: clientY - imagePosition.value.y
+  }
+}
+
+const onDrag = (e) => {
+  if (!isDragging.value) return
+  e.preventDefault()
+  const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX
+  const clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY
+  imagePosition.value = {
+    ...imagePosition.value,
+    x: clientX - dragStart.value.x,
+    y: clientY - dragStart.value.y
+  }
+}
+
+const stopDrag = () => {
+  isDragging.value = false
+}
+
+const zoomIn = () => {
+  imagePosition.value = {
+    ...imagePosition.value,
+    scale: Math.min(imagePosition.value.scale + 0.1, 3)
+  }
+}
+
+const zoomOut = () => {
+  imagePosition.value = {
+    ...imagePosition.value,
+    scale: Math.max(imagePosition.value.scale - 0.1, 0.1)
+  }
+}
+
+const resetPosition = () => {
+  imagePosition.value = { x: 0, y: 0, scale: 1 }
+}
+
+// Crop and resize image before upload
+const cropAndResizeImage = async () => {
+  return new Promise((resolve) => {
+    const img = new Image()
+    img.onload = () => {
+      // Get the preview section dimensions (aspect ratio 2:1 for the image section)
+      const previewWidth = 350 // max preview width
+      const previewHeight = previewWidth * (2/3) // 2:1 ratio for image section
+
+      // Create canvas for cropping
+      const canvas = document.createElement('canvas')
+      const ctx = canvas.getContext('2d')
+
+      // Calculate the crop area based on the preview dimensions and image position
+      const scale = imagePosition.value.scale
+      const offsetX = -imagePosition.value.x / scale
+      const offsetY = -imagePosition.value.y / scale
+
+      // Set canvas size (max 1000px width while maintaining aspect ratio)
+      const targetWidth = Math.min(1000, previewWidth * 2) // 2x for better quality
+      const targetHeight = targetWidth * (2/3)
+      canvas.width = targetWidth
+      canvas.height = targetHeight
+
+      // Calculate source dimensions from the original image
+      const sourceWidth = previewWidth / scale
+      const sourceHeight = previewHeight / scale
+      const sourceX = offsetX
+      const sourceY = offsetY
+
+      // Draw the cropped and scaled image
+      ctx.drawImage(
+        img,
+        sourceX, sourceY, sourceWidth, sourceHeight,
+        0, 0, targetWidth, targetHeight
+      )
+
+      // Convert to blob
+      canvas.toBlob((blob) => {
+        const croppedFile = new File([blob], imageFile.value.name, {
+          type: 'image/jpeg',
+          lastModified: Date.now()
+        })
+        resolve(croppedFile)
+      }, 'image/jpeg', 0.9)
+    }
+    img.src = originalImage.value
+  })
 }
 
 const handleSubmit = async () => {
@@ -219,6 +365,10 @@ const handleSubmit = async () => {
     formDataToSend.append('background_color', formData.value.background_color)
     formDataToSend.append('card_color', formData.value.card_color)
     formDataToSend.append('text_color', formData.value.text_color)
+    formDataToSend.append('card_rotation', formData.value.card_rotation)
+    formDataToSend.append('image_offset_x', imagePosition.value.x)
+    formDataToSend.append('image_offset_y', imagePosition.value.y)
+    formDataToSend.append('image_scale', imagePosition.value.scale)
     formDataToSend.append('image', imageFile.value)
 
     const response = await axios.post('/api/sparklets', formDataToSend, {
@@ -348,16 +498,13 @@ const copyToClipboard = async (text) => {
   justify-content: center;
   padding: 2rem;
   border-radius: 12px;
-  transition: background-color 0.3s ease;
 }
 
 .sparklet-preview {
   width: 90%;
-  max-width: 350px;
   aspect-ratio: 1;
   border-radius: 8px;
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
-  transform: rotate(10deg);
   transition: all 0.3s ease;
   overflow: hidden;
   display: flex;
@@ -365,8 +512,8 @@ const copyToClipboard = async (text) => {
 }
 
 .sparklet-preview:hover {
-  transform: rotate(10deg) translateY(-8px);
   box-shadow: 0 16px 32px rgba(0, 0, 0, 0.3);
+  filter: brightness(1.02);
 }
 
 .preview-image-section {
@@ -376,12 +523,49 @@ const copyToClipboard = async (text) => {
   align-items: center;
   justify-content: center;
   background-color: #f5f5f5;
+  position: relative;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
-.preview-image-section img {
+.draggable-image {
   width: 100%;
-  height: 100%;
   object-fit: cover;
+  transition: transform 0.1s ease-out;
+  pointer-events: auto;
+  transform-origin: center center;
+}
+
+.image-controls {
+  position: absolute;
+  bottom: 0.5rem;
+  right: 0.5rem;
+  display: flex;
+  gap: 0.25rem;
+  z-index: 10;
+}
+
+.zoom-btn {
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  opacity: 0.35;
+}
+
+.zoom-btn:hover {
+  background: white;
+  transform: scale(1.05);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  opacity: 0.80;
+}
+
+.zoom-btn:active {
+  transform: scale(0.95);
 }
 
 .placeholder-image {
@@ -409,10 +593,12 @@ const copyToClipboard = async (text) => {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+  position: relative;
+  z-index: 1;
 }
 
 .preview-message {
-  font-size: 0.9rem;
+  font-size: 0.945rem;
   line-height: 1.4;
   margin: 0 0 0.5rem 0;
   overflow-wrap: break-word;
@@ -430,10 +616,12 @@ const copyToClipboard = async (text) => {
 
 .preview-from {
   font-weight: 600;
+  font-size: 0.7875rem;
 }
 
 .preview-to {
   font-style: italic;
+  font-size: 0.7875rem;
 }
 
 h1 {
@@ -500,6 +688,49 @@ h1 {
   border: 2px solid #e0e0e0;
   border-radius: 6px;
   cursor: pointer;
+}
+
+.rotation-slider {
+  width: 100%;
+  height: 8px;
+  border-radius: 4px;
+  background: linear-gradient(to right, #e0e0e0 0%, #667eea 50%, #e0e0e0 100%);
+  outline: none;
+  cursor: pointer;
+  -webkit-appearance: none;
+}
+
+.rotation-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #667eea;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  transition: all 0.2s;
+}
+
+.rotation-slider::-webkit-slider-thumb:hover {
+  background: #5568d3;
+  transform: scale(1.1);
+}
+
+.rotation-slider::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #667eea;
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  transition: all 0.2s;
+}
+
+.rotation-slider::-moz-range-thumb:hover {
+  background: #5568d3;
+  transform: scale(1.1);
 }
 
 .submit-btn {

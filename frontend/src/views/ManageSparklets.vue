@@ -174,7 +174,8 @@ const editData = ref({
   message: '',
   background_color: '#FFF8DC',
   card_color: '#FFFFFF',
-  text_color: '#333333'
+  text_color: '#333333',
+  card_rotation: 5
 })
 const editImageFile = ref(null)
 const updating = ref(false)
@@ -211,7 +212,8 @@ const openEditModal = (sparklet) => {
     message: sparklet.message,
     background_color: sparklet.background_color,
     card_color: sparklet.card_color,
-    text_color: sparklet.text_color
+    text_color: sparklet.text_color,
+    card_rotation: sparklet.card_rotation || 5
   }
   editImageFile.value = null
   editError.value = null
@@ -246,12 +248,13 @@ const updateSparklet = async () => {
     formData.append('background_color', editData.value.background_color)
     formData.append('card_color', editData.value.card_color)
     formData.append('text_color', editData.value.text_color)
+    formData.append('card_rotation', editData.value.card_rotation)
 
     if (editImageFile.value) {
       formData.append('image', editImageFile.value)
     }
 
-    await axios.put(`${API_BASE_URL}/sparklets/${sparkletToEdit.value.id}`, formData, {
+    await axios.put(`${API_BASE_URL}/api/sparklets/${sparkletToEdit.value.id}`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data'
       }
@@ -284,7 +287,7 @@ const deleteSparklet = async () => {
   if (!sparkletToDelete.value) return
 
   try {
-    await axios.delete(`${API_BASE_URL}/sparklets/${sparkletToDelete.value.id}`)
+    await axios.delete(`${API_BASE_URL}/api/sparklets/${sparkletToDelete.value.id}`)
 
     // Remove from local array
     sparklets.value = sparklets.value.filter(s => s.id !== sparkletToDelete.value.id)

@@ -4,6 +4,7 @@ from pathlib import Path
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from PIL import Image
 
 from database import get_db, init_db
 
@@ -12,6 +13,29 @@ app = FastAPI(
     description="Backend API for Sparklets.im",
     version="0.1.0",
 )
+
+# Helper function to resize images
+def resize_image(image_bytes: bytes, max_width: int = 1000) -> bytes:
+    """Resize image to max width while maintaining aspect ratio"""
+    img = Image.open(image_bytes)
+
+    # Convert RGBA to RGB if necessary
+    if img.mode == 'RGBA':
+        rgb_img = Image.new('RGB', img.size, (255, 255, 255))
+        rgb_img.paste(img, mask=img.split()[3])
+        img = rgb_img
+
+    # Calculate new dimensions
+    if img.width > max_width:
+        ratio = max_width / img.width
+        new_height = int(img.height * ratio)
+        img = img.resize((max_width, new_height), Image.Resampling.LANCZOS)
+
+    # Save to bytes
+    from io import BytesIO
+    output = BytesIO()
+    img.save(output, format='JPEG', quality=90)
+    return output.getvalue()
 
 # Configure CORS
 import os
@@ -65,6 +89,9 @@ async def get_all_sparklets():
                 "card_color": row["card_color"],
                 "text_color": row["text_color"],
                 "card_rotation": row["card_rotation"],
+                "image_offset_x": row["image_offset_x"],
+                "image_offset_y": row["image_offset_y"],
+                "image_scale": row["image_scale"],
             }
             for row in rows
         ]
@@ -92,6 +119,9 @@ async def get_sparklet(sparklet_id: int):
             "card_color": row["card_color"],
             "text_color": row["text_color"],
             "card_rotation": row["card_rotation"],
+            "image_offset_x": row["image_offset_x"],
+            "image_offset_y": row["image_offset_y"],
+            "image_scale": row["image_scale"],
         }
 
 
@@ -104,25 +134,32 @@ async def create_sparklet(
     card_color: str = Form(default="#ffffff"),
     text_color: str = Form(default="#333333"),
     card_rotation: int = Form(default=5),
+    image_offset_x: float = Form(default=0),
+    image_offset_y: float = Form(default=0),
+    image_scale: float = Form(default=1),
     image: UploadFile = File(...),
 ):
-    # Save uploaded image
+    # Read and resize uploaded image
+    image_content = await image.read()
+    from io import BytesIO
+    resized_image = resize_image(BytesIO(image_content))
+
+    # Save resized image
     image_filename = f"{datetime.now().timestamp()}_{image.filename}"
     image_path = CONTENTS_DIR / "imgs" / image_filename
 
     with open(image_path, "wb") as f:
-        content = await image.read()
-        f.write(content)
+        f.write(resized_image)
 
     # Insert into database
     with get_db() as conn:
         cursor = conn.execute(
             """
             INSERT INTO sparklets
-            (image_filename, to_name, from_name, message, background_color, card_color, text_color, card_rotation)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            (image_filename, to_name, from_name, message, background_color, card_color, text_color, card_rotation, image_offset_x, image_offset_y, image_scale)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            (image_filename, to_name, from_name, message, background_color, card_color, text_color, card_rotation),
+            (image_filename, to_name, from_name, message, background_color, card_color, text_color, card_rotation, image_offset_x, image_offset_y, image_scale),
         )
         conn.commit()
         sparklet_id = cursor.lastrowid
@@ -160,13 +197,17 @@ async def update_sparklet(
             if old_image_path.exists():
                 old_image_path.unlink()
 
-            # Save new image
+            # Read and resize new image
+            image_content = await image.read()
+            from io import BytesIO
+            resized_image = resize_image(BytesIO(image_content))
+
+            # Save resized image
             image_filename = f"{datetime.now().timestamp()}_{image.filename}"
             image_path = CONTENTS_DIR / "imgs" / image_filename
 
             with open(image_path, "wb") as f:
-                content = await image.read()
-                f.write(content)
+                f.write(resized_image)
 
         # Update database
         conn.execute(

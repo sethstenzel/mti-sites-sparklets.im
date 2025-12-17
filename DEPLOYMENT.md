@@ -1,6 +1,6 @@
-# Sparklets.IM VPS Deployment Guide
+# Sparklets.im VPS Deployment Guide
 
-This guide walks you through deploying Sparklets.IM on your VPS alongside the existing sethstenzel.me application.
+This guide walks you through deploying Sparklets.im on your VPS alongside the existing sethstenzel.me application.
 
 ## Prerequisites
 

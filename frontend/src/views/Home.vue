@@ -1,8 +1,8 @@
 <template>
   <div class="home">
     <div class="hero">
-      <h2>Send Joy with Sparklets</h2>
-      <p class="tagline">Create beautiful QR code message cards for the people you care about</p>
+      <h2>Send Sparks of Joy with Sparklets</h2>
+      <p class="tagline">Create beautiful QR code / Weblink message cards for the people you care about!</p>
 
       <div class="cta-buttons">
         <router-link to="/create" class="btn btn-primary">Create a Sparklet</router-link>

@@ -1,5 +1,5 @@
 [Unit]
-Description=Sparklets.IM Backend API
+Description=Sparklets.im Backend API
 After=network.target
 Wants=network-online.target
 

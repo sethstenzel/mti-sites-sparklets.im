@@ -1,6 +1,6 @@
-# Sparklets.IM Frontend
+# Sparklets.im Frontend
 
-Vue 3 frontend for Sparklets.IM
+Vue 3 frontend for Sparklets.im
 
 ## Setup
 
