@@ -1,6 +1,6 @@
-# Sparklets.IM Backend
+# Sparklets.im Backend
 
-FastAPI backend for Sparklets.IM
+FastAPI backend for Sparklets.im
 
 ## Setup
 

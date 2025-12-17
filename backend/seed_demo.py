@@ -45,7 +45,8 @@ def seed_database():
             date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             background_color TEXT NOT NULL,
             card_color TEXT NOT NULL,
-            text_color TEXT NOT NULL
+            text_color TEXT NOT NULL,
+            card_rotation INTEGER DEFAULT 5
         )
     """)
 
@@ -59,8 +60,8 @@ def seed_database():
     # Insert demo sparklet
     cursor.execute("""
         INSERT INTO sparklets
-        (id, image_filename, to_name, from_name, message, background_color, card_color, text_color)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        (id, image_filename, to_name, from_name, message, background_color, card_color, text_color, card_rotation)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
         1,
         "demo.jpg",
@@ -69,7 +70,8 @@ def seed_database():
         "Hope you're having an amazing day! Just wanted to send some sunshine your way. Can't wait to catch up soon! ☀️",
         "#FFF8DC",
         "#FFFACD",
-        "#2F4F4F"
+        "#2F4F4F",
+        7
     ))
 
     conn.commit()

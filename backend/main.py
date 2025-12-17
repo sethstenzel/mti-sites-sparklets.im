@@ -8,8 +8,8 @@ from fastapi.staticfiles import StaticFiles
 from database import get_db, init_db
 
 app = FastAPI(
-    title="Sparklets.IM API",
-    description="Backend API for Sparklets.IM",
+    title="Sparklets.im API",
+    description="Backend API for Sparklets.im",
     version="0.1.0",
 )
 
@@ -37,7 +37,7 @@ app.mount("/contents", StaticFiles(directory=str(CONTENTS_DIR)), name="contents"
 
 @app.get("/")
 async def root():
-    return {"message": "Welcome to Sparklets.IM API"}
+    return {"message": "Welcome to Sparklets.im API"}
 
 
 @app.get("/health")
@@ -64,6 +64,7 @@ async def get_all_sparklets():
                 "background_color": row["background_color"],
                 "card_color": row["card_color"],
                 "text_color": row["text_color"],
+                "card_rotation": row["card_rotation"],
             }
             for row in rows
         ]
@@ -90,6 +91,7 @@ async def get_sparklet(sparklet_id: int):
             "background_color": row["background_color"],
             "card_color": row["card_color"],
             "text_color": row["text_color"],
+            "card_rotation": row["card_rotation"],
         }
 
 
@@ -101,6 +103,7 @@ async def create_sparklet(
     background_color: str = Form(default="#f0f0f0"),
     card_color: str = Form(default="#ffffff"),
     text_color: str = Form(default="#333333"),
+    card_rotation: int = Form(default=5),
     image: UploadFile = File(...),
 ):
     # Save uploaded image
@@ -116,10 +119,10 @@ async def create_sparklet(
         cursor = conn.execute(
             """
             INSERT INTO sparklets
-            (image_filename, to_name, from_name, message, background_color, card_color, text_color)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            (image_filename, to_name, from_name, message, background_color, card_color, text_color, card_rotation)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            (image_filename, to_name, from_name, message, background_color, card_color, text_color),
+            (image_filename, to_name, from_name, message, background_color, card_color, text_color, card_rotation),
         )
         conn.commit()
         sparklet_id = cursor.lastrowid
@@ -136,6 +139,7 @@ async def update_sparklet(
     background_color: str = Form(default="#f0f0f0"),
     card_color: str = Form(default="#ffffff"),
     text_color: str = Form(default="#333333"),
+    card_rotation: int = Form(default=5),
     image: UploadFile = File(None),
 ):
     with get_db() as conn:
@@ -170,10 +174,10 @@ async def update_sparklet(
             UPDATE sparklets
             SET to_name = ?, from_name = ?, message = ?,
                 background_color = ?, card_color = ?, text_color = ?,
-                image_filename = ?
+                card_rotation = ?, image_filename = ?
             WHERE id = ?
             """,
-            (to_name, from_name, message, background_color, card_color, text_color, image_filename, sparklet_id),
+            (to_name, from_name, message, background_color, card_color, text_color, card_rotation, image_filename, sparklet_id),
         )
         conn.commit()
 

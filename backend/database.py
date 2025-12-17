@@ -27,7 +27,16 @@ def init_db():
                 date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 background_color TEXT NOT NULL,
                 card_color TEXT NOT NULL,
-                text_color TEXT NOT NULL
+                text_color TEXT NOT NULL,
+                card_rotation INTEGER DEFAULT 5
             )
         """)
         conn.commit()
+
+        # Migration: Add card_rotation column if it doesn't exist
+        try:
+            conn.execute("ALTER TABLE sparklets ADD COLUMN card_rotation INTEGER DEFAULT 5")
+            conn.commit()
+        except sqlite3.OperationalError:
+            # Column already exists
+            pass
