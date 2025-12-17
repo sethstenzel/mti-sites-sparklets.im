@@ -23,7 +23,7 @@ PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=yes
 ReadWritePaths=/var/www/sparklets.im/backend/contents
-ReadWritePaths=/var/www/sparklets.im/backend/sparklets.sqlite
+ReadWritePaths=/var/www/sparklets.im/backend
 
 [Install]
 WantedBy=multi-user.target

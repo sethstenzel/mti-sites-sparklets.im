@@ -219,3 +219,7 @@ pnpm-debug.log*
 # Environment variables
 .env.local
 .env.*.local
+
+
+# Testing / Content
+/backend/contents/imgs

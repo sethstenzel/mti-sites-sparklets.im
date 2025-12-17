@@ -158,7 +158,8 @@
 import { ref, onMounted } from 'vue'
 import axios from 'axios'
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:18002'
+// In production, use relative URL; in dev, use localhost
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
 
 const sparklets = ref([])
 const loading = ref(true)

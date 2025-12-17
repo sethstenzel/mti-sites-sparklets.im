@@ -138,7 +138,7 @@ sudo certbot certonly --webroot \
   -w /var/www/certbot \
   -d sparklets.im \
   -d www.sparklets.im \
-  --email your-email@example.com \
+  --email seth.c.stenzel@gmail.com \
   --agree-tos \
   --no-eff-email
 

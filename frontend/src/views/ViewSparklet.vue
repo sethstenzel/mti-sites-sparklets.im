@@ -34,7 +34,8 @@ const error = ref(null)
 
 const imageUrl = computed(() => {
   if (!sparklet.value) return ''
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:18002'
+  // In production, use relative URL; in dev, use localhost
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
   return `${API_BASE_URL}/contents/imgs/${sparklet.value.image_filename}`
 })
 
