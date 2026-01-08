@@ -49,7 +49,7 @@
     <div v-if="showEditModal" class="modal-overlay" @click="cancelEdit">
       <div class="modal edit-modal" @click.stop>
         <h2>Edit Sparklet</h2>
-        <form @submit.prevent="updateSparklet" class="edit-form">
+        <form @submit.prevent="updateSparklet" @keydown.enter.prevent class="edit-form">
           <div class="form-group">
             <label for="edit_to_name">To:</label>
             <input
@@ -80,6 +80,7 @@
               maxlength="100"
               rows="3"
               required
+              placeholder="Shift+Enter for new line"
             ></textarea>
             <span class="char-count">{{ editData.message.length }}/100</span>
           </div>

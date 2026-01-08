@@ -32,7 +32,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import axios from 'axios'
 
@@ -53,6 +53,30 @@ onMounted(async () => {
   try {
     const response = await axios.get(`/api/sparklets/${sparkletId}`)
     sparklet.value = response.data
+
+    // Scroll to center the sparklet card after it loads
+    await nextTick()
+
+    // Wait for image to load before scrolling
+    const img = document.querySelector('.image-section img')
+    if (img) {
+      await new Promise((resolve) => {
+        if (img.complete) {
+          resolve()
+        } else {
+          img.onload = () => resolve()
+          img.onerror = () => resolve()
+        }
+      })
+    }
+
+    // Small delay to ensure everything is rendered
+    setTimeout(() => {
+      const sparkletCard = document.querySelector('.sparklet-card')
+      if (sparkletCard) {
+        sparkletCard.scrollIntoView({ behavior: 'instant', block: 'center' })
+      }
+    }, 100)
   } catch (err) {
     error.value = err.response?.data?.detail || 'Failed to load sparklet'
   } finally {
@@ -170,11 +194,13 @@ onMounted(async () => {
 }
 
 .message {
-  font-size: 0.9rem;
-  line-height: 1.4;
+  font-size: 1.2rem;
+  line-height: 1.2;
   margin: 0 0 0.5rem 0;
   overflow-wrap: break-word;
   text-align: center;
+  overflow: hidden;
+  max-height: 100%;
 }
 
 .metadata {
@@ -187,10 +213,12 @@ onMounted(async () => {
 
 .from {
   font-weight: 600;
+  font-size: 1rem;
 }
 
 .to {
   font-weight: 600;
+  font-size: 1rem;
 }
 
 @media (min-width: 768px) {
@@ -199,7 +227,7 @@ onMounted(async () => {
   }
 
   .message {
-    font-size: 1rem;
+    font-size: 1.2rem;
   }
 
   .metadata {
@@ -210,6 +238,18 @@ onMounted(async () => {
 @media (min-width: 1024px) {
   .sparklet-card {
     max-width: 500px;
+  }
+}
+
+@media (max-width: 640px) {
+  .message {
+    font-size: 1rem;
+    line-height: 1;
+  }
+
+  .from,
+  .to {
+    font-size: 0.9rem;
   }
 }
 </style>

@@ -5,7 +5,7 @@
         <h1>Create a Sparklet</h1>
         <p class="subtitle">Send a special message to someone you care about</p>
 
-        <form @submit.prevent="handleSubmit" class="sparklet-form">
+        <form @submit.prevent="handleSubmit" @keydown.enter.prevent class="sparklet-form">
         <div class="form-group">
           <label for="to_name">To:</label>
           <input
@@ -38,7 +38,7 @@
             maxlength="100"
             required
             rows="4"
-            placeholder="Write your message here..."
+            placeholder="Write your message here... (Shift+Enter for new line)"
           ></textarea>
         </div>
 
@@ -472,12 +472,13 @@ const copyToClipboard = async (text) => {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 2rem;
+  padding: 0.5rem;
   border-radius: 12px;
 }
 
 .sparklet-preview {
-  width: 90%;
+  width: 100%;
+  max-width: 500px;
   aspect-ratio: 1;
   border-radius: 8px;
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
@@ -577,12 +578,14 @@ const copyToClipboard = async (text) => {
 }
 
 .preview-message {
-  font-size: 0.945em;
-  line-height: 1.4;
+  font-size: 1.2rem;
+  line-height: 1.2;
   margin: 0 0 0.5em 0;
   overflow-wrap: break-word;
   font-style: italic;
   text-align: center;
+  overflow: hidden;
+  max-height: 100%;
 }
 
 .preview-metadata {
@@ -595,12 +598,12 @@ const copyToClipboard = async (text) => {
 
 .preview-from {
   font-weight: 600;
-  font-size: 0.7875em;
+  font-size: 1rem;
 }
 
 .preview-to {
   font-weight: 600;
-  font-size: 0.7875em;
+  font-size: 1rem;
 }
 
 h1 {
@@ -914,7 +917,7 @@ h1 {
   }
 
   .sparklet-preview {
-    max-width: 300px;
+    max-width: 500px;
   }
 }
 
@@ -937,11 +940,21 @@ h1 {
   }
 
   .sparklet-preview {
-    max-width: 250px;
+    max-width: 500px;
   }
 
   .preview-wrapper h2 {
     font-size: 1.2rem;
+  }
+
+  .preview-message {
+    font-size: 1rem;
+    line-height: 1;
+  }
+
+  .preview-from,
+  .preview-to {
+    font-size: 0.9rem;
   }
 
   .action-buttons {
