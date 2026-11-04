@@ -55,7 +55,7 @@
                 :text-color="s.text_color"
                 :rotation="s.card_rotation"
                 :image="imageUrl(s.image_filename)"
-                :tape="false"
+               
               />
             </div>
           </router-link>

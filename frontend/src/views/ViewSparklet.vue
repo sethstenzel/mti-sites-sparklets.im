@@ -7,7 +7,7 @@
     <div v-else-if="state === 'error'" class="center">
       <div class="missing panel">
         <div class="missing-art" aria-hidden="true">
-          <SparkletCard message="?" card-color="#ffffff" text-color="#8f8aa5" :rotation="-6" :tape="false" />
+          <SparkletCard message="?" card-color="#ffffff" text-color="#8f8aa5" :rotation="-6" />
         </div>
         <h1>{{ notFound ? 'This sparklet isn’t here' : 'Couldn’t load this sparklet' }}</h1>
         <p>{{ notFound ? 'It may have been removed, or the link is incomplete. Check the link and try again.' : errorText }}</p>

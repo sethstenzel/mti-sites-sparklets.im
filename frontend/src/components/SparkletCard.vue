@@ -1,7 +1,6 @@
 <template>
   <figure
     class="sparklet"
-    :class="{ 'no-tape': !tape }"
     :style="{
       '--card': cardColor,
       '--note-ink': textColor,
@@ -38,7 +37,6 @@ const props = defineProps({
   textColor: { type: String, default: '#333333' },
   rotation: { type: Number, default: 0 },
   image: { type: String, default: '' },
-  tape: { type: Boolean, default: true },
   messagePlaceholder: { type: String, default: '' },
   toPlaceholder: { type: String, default: '…' },
   fromPlaceholder: { type: String, default: '…' }
@@ -74,29 +72,6 @@ const sizeClass = computed(() => {
     0 0.4cqw 0.8cqw rgba(20, 16, 40, 0.1),
     0 5cqw 9cqw -3cqw rgba(20, 16, 40, 0.35);
   color: var(--note-ink);
-}
-
-/* a strip of washi tape holding the card down */
-.sparklet::before {
-  content: '';
-  position: absolute;
-  top: -2.6cqw;
-  left: 50%;
-  width: 24cqw;
-  height: 6.5cqw;
-  transform: translateX(-50%) rotate(-3deg);
-  background:
-    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.28) 0 1.2cqw, transparent 1.2cqw 2.4cqw),
-    color-mix(in srgb, #ff3d6e 45%, rgba(255, 220, 230, 0.55));
-  opacity: 0.85;
-  border-radius: 0.4cqw;
-  box-shadow: 0 0.3cqw 0.8cqw rgba(0, 0, 0, 0.08);
-  pointer-events: none;
-  z-index: 2;
-}
-
-.sparklet.no-tape::before {
-  display: none;
 }
 
 .photo {
