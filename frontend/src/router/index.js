@@ -1,39 +1,45 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import Home from '../views/Home.vue'
-import CreateSparklet from '../views/CreateSparklet.vue'
-import ViewSparklet from '../views/ViewSparklet.vue'
-import ManageSparklets from '../views/ManageSparklets.vue'
 
 const routes = [
-  {
-    path: '/',
-    name: 'Home',
-    component: Home
-  },
+  { path: '/', name: 'Home', component: Home, meta: { fullTitle: 'Sparklets — little photo notes, shared by QR code' } },
   {
     path: '/create',
     name: 'CreateSparklet',
-    component: CreateSparklet
+    component: () => import('../views/CreateSparklet.vue'),
+    meta: { title: 'Create a sparklet' }
   },
+  { path: '/sparklet', redirect: '/create' },
   {
-    path: '/sparklet/',
-    redirect: '/create'
-  },
-  {
-    path: '/sparklet/:id',
+    path: '/sparklet/:id(\\d+)',
     name: 'ViewSparklet',
-    component: ViewSparklet
+    component: () => import('../views/ViewSparklet.vue'),
+    meta: { title: 'A sparklet for you', immersive: true }
   },
   {
     path: '/manage',
     name: 'ManageSparklets',
-    component: ManageSparklets
+    component: () => import('../views/ManageSparklets.vue'),
+    meta: { title: 'Manage sparklets' }
+  },
+  {
+    path: '/:pathMatch(.*)*',
+    name: 'NotFound',
+    component: () => import('../views/NotFound.vue'),
+    meta: { title: 'Page not found' }
   }
 ]
 
 const router = createRouter({
   history: createWebHistory(),
-  routes
+  routes,
+  scrollBehavior(to, from, saved) {
+    return saved || { top: 0 }
+  }
+})
+
+router.afterEach((to) => {
+  document.title = to.meta.fullTitle || (to.meta.title ? `${to.meta.title} · Sparklets` : 'Sparklets')
 })
 
 export default router

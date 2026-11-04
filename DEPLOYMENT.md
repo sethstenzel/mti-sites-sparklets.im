@@ -178,7 +178,24 @@ curl https://sparklets.im/api/sparklets/1
 # https://sparklets.im/create - Should show create form
 ```
 
-## Using the Deployment Script
+## Deploying Updates (current workflow)
+
+Production is not a git checkout. Build locally and push with:
+
+```bash
+./deployment/deploy-prod.sh
+```
+
+It builds the frontend, uploads backend code + `frontend/dist`, backs up the
+SQLite DB to `/var/www/sparklets.im/backups/`, runs `uv sync`, creates
+`backend/.env` with an `ADMIN_TOKEN` if missing, and restarts the backend by
+stopping uvicorn (systemd's `Restart=always` brings it back; `appsuser` has no
+sudo rights for this service).
+
+The `/manage` page asks for that `ADMIN_TOKEN`. Read it on the server with
+`cat /var/www/sparklets.im/backend/.env`.
+
+## Using the Legacy Deployment Script
 
 After initial setup, use the deployment script for updates:
 

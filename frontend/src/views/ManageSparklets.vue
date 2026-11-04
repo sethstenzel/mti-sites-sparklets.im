@@ -1,682 +1,583 @@
 <template>
-  <div class="manage-container">
-    <h1>Manage Sparklets</h1>
-
-    <div v-if="loading" class="loading">Loading sparklets...</div>
-
-    <div v-else-if="error" class="error">
-      {{ error }}
+  <div class="manage">
+    <!-- token gate -->
+    <div v-if="!authed" class="gate-wrap">
+      <form class="gate panel" @submit.prevent="signIn">
+        <span class="gate-icon"><Icon name="lock" /></span>
+        <h1>Manage sparklets</h1>
+        <p>Enter the admin token from the server’s <code>backend/.env</code> file.</p>
+        <label class="field">
+          <span class="visually-hidden">Admin token</span>
+          <input v-model="tokenInput" class="input" type="password" autocomplete="current-password" placeholder="Admin token" required />
+        </label>
+        <div v-if="gateError" class="alert alert-error" role="alert">{{ gateError }}</div>
+        <button type="submit" class="btn btn-primary" :disabled="checking || !tokenInput">
+          {{ checking ? 'Checking…' : 'Unlock' }}
+        </button>
+      </form>
     </div>
 
-    <div v-else-if="sparklets.length === 0" class="empty">
-      <p>No sparklets found.</p>
-    </div>
-
-    <div v-else class="sparklets-grid">
-      <div
-        v-for="sparklet in sparklets"
-        :key="sparklet.id"
-        class="sparklet-item"
-      >
-        <div class="sparklet-preview" :style="{ backgroundColor: sparklet.background_color }">
-          <div class="sparklet-card" :style="{ backgroundColor: sparklet.card_color }">
-            <div class="image-section">
-              <img :src="getImageUrl(sparklet.image_filename)" :alt="`Sparklet ${sparklet.id}`" />
-            </div>
-            <div class="message-section" :style="{ color: sparklet.text_color }">
-              <p class="message">{{ sparklet.message }}</p>
-              <div class="metadata">
-                <p class="from">From: {{ sparklet.from_name }}</p>
-                <p class="to">To: {{ sparklet.to_name }}</p>
-              </div>
-            </div>
-          </div>
+    <template v-else>
+      <header class="head">
+        <div>
+          <h1>Manage sparklets</h1>
+          <p>{{ sparklets.length }} {{ sparklets.length === 1 ? 'sparklet' : 'sparklets' }}</p>
         </div>
-
-        <div class="sparklet-info">
-          <p><strong>ID:</strong> {{ sparklet.id }}</p>
-          <p><strong>Created:</strong> {{ formatDate(sparklet.date_created) }}</p>
-          <div class="actions">
-            <router-link :to="`/sparklet/${sparklet.id}`" class="btn-view">View</router-link>
-            <button @click="openEditModal(sparklet)" class="btn-edit">Edit</button>
-            <button @click="confirmDelete(sparklet)" class="btn-delete">Delete</button>
-          </div>
+        <div class="head-tools">
+          <input v-model="query" class="input search" type="search" placeholder="Search names or messages" aria-label="Search sparklets" />
+          <button type="button" class="btn btn-ghost" @click="signOut"><Icon name="logout" /> Lock</button>
         </div>
+      </header>
+
+      <div v-if="loading" class="grid">
+        <div v-for="n in 6" :key="n" class="tile skeleton"></div>
       </div>
-    </div>
 
-    <!-- Edit Modal -->
-    <div v-if="showEditModal" class="modal-overlay" @click="cancelEdit">
-      <div class="modal edit-modal" @click.stop>
-        <h2>Edit Sparklet</h2>
-        <form @submit.prevent="updateSparklet" @keydown.enter.prevent class="edit-form">
-          <div class="form-group">
-            <label for="edit_to_name">To:</label>
-            <input
-              id="edit_to_name"
-              v-model="editData.to_name"
-              type="text"
-              maxlength="100"
-              required
-            />
-          </div>
+      <div v-else-if="loadError" class="empty">
+        <p>{{ loadError }}</p>
+        <button type="button" class="btn btn-ghost" @click="loadSparklets">Try again</button>
+      </div>
 
-          <div class="form-group">
-            <label for="edit_from_name">From:</label>
-            <input
-              id="edit_from_name"
-              v-model="editData.from_name"
-              type="text"
-              maxlength="100"
-              required
-            />
-          </div>
+      <div v-else-if="filtered.length === 0" class="empty">
+        <p>{{ query ? 'No sparklets match that search.' : 'No sparklets yet.' }}</p>
+        <router-link v-if="!query" to="/create" class="btn btn-primary"><Icon name="plus" /> Create one</router-link>
+      </div>
 
-          <div class="form-group">
-            <label for="edit_message">Message (100 chars):</label>
-            <textarea
-              id="edit_message"
-              v-model="editData.message"
-              maxlength="100"
-              rows="3"
-              required
-              placeholder="Shift+Enter for new line"
-            ></textarea>
-            <span class="char-count">{{ editData.message.length }}/100</span>
-          </div>
-
-          <div class="form-group">
-            <label for="edit_image">Image (leave empty to keep current):</label>
-            <input
-              id="edit_image"
-              type="file"
-              accept="image/*"
-              @change="handleEditImageChange"
-            />
-          </div>
-
-          <div class="color-row">
-            <div class="form-group">
-              <label for="edit_background_color">Background:</label>
-              <input
-                id="edit_background_color"
-                v-model="editData.background_color"
-                type="color"
+      <div v-else class="grid">
+        <article v-for="s in filtered" :key="s.id" class="tile">
+          <router-link :to="`/sparklet/${s.id}`" class="thumb" :style="{ background: s.background_color }" :aria-label="`Open sparklet ${s.id}`">
+            <div class="thumb-card">
+              <SparkletCard
+                :message="s.message"
+                :to-name="s.to_name"
+                :from-name="s.from_name"
+                :card-color="s.card_color"
+                :text-color="s.text_color"
+                :rotation="s.card_rotation"
+                :image="imageUrl(s.image_filename)"
+                :tape="false"
               />
             </div>
-
-            <div class="form-group">
-              <label for="edit_card_color">Card:</label>
-              <input
-                id="edit_card_color"
-                v-model="editData.card_color"
-                type="color"
-              />
+          </router-link>
+          <div class="meta">
+            <div class="who">
+              <strong>{{ s.from_name }}</strong>
+              <Icon name="arrowRight" />
+              <strong>{{ s.to_name }}</strong>
             </div>
-
-            <div class="form-group">
-              <label for="edit_text_color">Text:</label>
-              <input
-                id="edit_text_color"
-                v-model="editData.text_color"
-                type="color"
-              />
+            <p class="sub">
+              <span>#{{ s.id }}</span>
+              <time :datetime="s.date_created" :title="fullDate(s.date_created)">{{ timeAgo(s.date_created) }}</time>
+              <span class="anim">{{ animationName(s.entry_animation) }}</span>
+            </p>
+            <div class="tile-actions">
+              <button type="button" class="btn btn-sm btn-ghost" @click="openEdit(s)"><Icon name="edit" /> Edit</button>
+              <button type="button" class="btn btn-sm btn-ghost danger" @click="toDelete = s"><Icon name="trash" /> Delete</button>
             </div>
           </div>
+        </article>
+      </div>
+    </template>
 
-          <div v-if="editError" class="edit-error">{{ editError }}</div>
-
+    <!-- edit -->
+    <Modal :open="!!editing" :title="editing ? `Edit sparklet #${editing.id}` : ''" size="lg" @close="closeEdit">
+      <form v-if="editing" class="edit" @submit.prevent="saveEdit">
+        <div class="edit-preview" :style="{ background: editData.background_color }">
+          <div class="edit-card">
+            <SparkletStage :animation="editData.entry_animation" :play-key="editPlayKey" :float="false">
+              <SparkletCard
+                :message="editData.message"
+                :to-name="editData.to_name"
+                :from-name="editData.from_name"
+                :card-color="editData.card_color"
+                :text-color="editData.text_color"
+                :rotation="editData.card_rotation"
+              >
+                <template #photo>
+                  <ImageCropper
+                    v-if="editImagePreview"
+                    ref="editCropper"
+                    :src="editImagePreview"
+                    :rotation="editData.card_rotation"
+                    :file-name="editImageFile?.name"
+                  />
+                  <img v-else :src="imageUrl(editing.image_filename)" alt="" class="current-photo" />
+                </template>
+              </SparkletCard>
+            </SparkletStage>
+          </div>
+        </div>
+        <div class="edit-fields">
+          <div class="field">
+            <span class="field-label">Photo</span>
+            <PhotoDrop :file-name="editImageFile?.name || ''" label="Replace the photo" @select="pickEditImage" />
+          </div>
+          <SparkletFields v-model="editData" />
+          <AnimationPicker v-model="editData.entry_animation" @preview="editPlayKey++" />
+          <div v-if="editError" class="alert alert-error" role="alert">{{ editError }}</div>
           <div class="modal-actions">
-            <button type="button" @click="cancelEdit" class="btn-cancel">Cancel</button>
-            <button type="submit" :disabled="updating" class="btn-save">
-              {{ updating ? 'Saving...' : 'Save Changes' }}
-            </button>
+            <button type="button" class="btn btn-ghost" @click="closeEdit">Cancel</button>
+            <button type="submit" class="btn btn-primary" :disabled="saving">{{ saving ? 'Saving…' : 'Save changes' }}</button>
           </div>
-        </form>
-      </div>
-    </div>
+        </div>
+      </form>
+    </Modal>
 
-    <!-- Delete Confirmation Modal -->
-    <div v-if="showDeleteModal" class="modal-overlay" @click="cancelDelete">
-      <div class="modal" @click.stop>
-        <h2>Confirm Delete</h2>
-        <p>Are you sure you want to delete this sparklet?</p>
-        <div v-if="sparkletToDelete" class="delete-info">
-          <p><strong>ID:</strong> {{ sparkletToDelete.id }}</p>
-          <p><strong>From:</strong> {{ sparkletToDelete.from_name }}</p>
-          <p><strong>To:</strong> {{ sparkletToDelete.to_name }}</p>
-        </div>
+    <!-- delete -->
+    <Modal :open="!!toDelete" title="Delete this sparklet?" @close="toDelete = null">
+      <template v-if="toDelete">
+        <p class="confirm-text">
+          The card from <strong>{{ toDelete.from_name }}</strong> to <strong>{{ toDelete.to_name }}</strong> and its photo
+          will be removed. Anyone with the link or QR code will see a “not found” page. This can’t be undone.
+        </p>
         <div class="modal-actions">
-          <button @click="cancelDelete" class="btn-cancel">Cancel</button>
-          <button @click="deleteSparklet" class="btn-confirm-delete">Delete</button>
+          <button type="button" class="btn btn-ghost" @click="toDelete = null">Cancel</button>
+          <button type="button" class="btn btn-danger" :disabled="deleting" @click="deleteSparklet">
+            {{ deleting ? 'Deleting…' : 'Delete sparklet' }}
+          </button>
         </div>
-      </div>
-    </div>
+      </template>
+    </Modal>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import axios from 'axios'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import Icon from '../components/Icon.vue'
+import Modal from '../components/Modal.vue'
+import SparkletCard from '../components/SparkletCard.vue'
+import SparkletStage from '../components/SparkletStage.vue'
+import SparkletFields from '../components/SparkletFields.vue'
+import AnimationPicker from '../components/AnimationPicker.vue'
+import ImageCropper from '../components/ImageCropper.vue'
+import PhotoDrop from '../components/PhotoDrop.vue'
+import {
+  api,
+  adminHeaders,
+  buildSparkletForm,
+  errorMessage,
+  getAdminToken,
+  imageUrl,
+  parseDate,
+  setAdminToken,
+  timeAgo
+} from '../lib/api'
+import { animations } from '../lib/animations'
+import { toast } from '../lib/toast'
 
-// In production, use relative URL; in dev, use localhost
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
+const authed = ref(false)
+const tokenInput = ref('')
+const checking = ref(false)
+const gateError = ref('')
 
 const sparklets = ref([])
-const loading = ref(true)
-const error = ref(null)
-const showDeleteModal = ref(false)
-const sparkletToDelete = ref(null)
-const showEditModal = ref(false)
-const sparkletToEdit = ref(null)
-const editData = ref({
-  to_name: '',
-  from_name: '',
-  message: '',
-  background_color: '#FFF8DC',
-  card_color: '#FFFFFF',
-  text_color: '#333333',
-  card_rotation: 5
-})
+const loading = ref(false)
+const loadError = ref('')
+const query = ref('')
+
+const editing = ref(null)
+const editData = ref({})
 const editImageFile = ref(null)
-const updating = ref(false)
-const editError = ref(null)
+const editImagePreview = ref('')
+const editCropper = ref(null)
+const editPlayKey = ref(0)
+const editError = ref('')
+const saving = ref(false)
+
+const toDelete = ref(null)
+const deleting = ref(false)
+
+const filtered = computed(() => {
+  const q = query.value.trim().toLowerCase()
+  if (!q) return sparklets.value
+  return sparklets.value.filter((s) =>
+    [s.to_name, s.from_name, s.message, String(s.id)].some((v) => v?.toLowerCase().includes(q))
+  )
+})
+
+const animationName = (id) => animations.find((a) => a.id === id)?.name || 'Drop'
+const fullDate = (value) => parseDate(value)?.toLocaleString() || ''
+
+const handleAuthError = (err) => {
+  if (err?.response?.status === 401) {
+    setAdminToken('')
+    authed.value = false
+    gateError.value = 'Your admin token was rejected. Enter it again.'
+    return true
+  }
+  return false
+}
+
+const signIn = async () => {
+  checking.value = true
+  gateError.value = ''
+  try {
+    await api.get('/api/admin/check', { headers: adminHeaders(tokenInput.value) })
+    setAdminToken(tokenInput.value)
+    authed.value = true
+    tokenInput.value = ''
+    loadSparklets()
+  } catch (err) {
+    gateError.value =
+      err?.response?.status === 401 ? 'That token doesn’t match. Check it and try again.' : errorMessage(err, 'Couldn’t verify the token.')
+  } finally {
+    checking.value = false
+  }
+}
+
+const signOut = () => {
+  setAdminToken('')
+  authed.value = false
+  sparklets.value = []
+}
 
 const loadSparklets = async () => {
+  loading.value = true
+  loadError.value = ''
   try {
-    loading.value = true
-    error.value = null
-    const response = await axios.get(`${API_BASE_URL}/api/sparklets`)
-    sparklets.value = response.data
+    const { data } = await api.get('/api/sparklets', { headers: adminHeaders() })
+    sparklets.value = data
   } catch (err) {
-    console.error('Failed to load sparklets:', err)
-    error.value = 'Failed to load sparklets. Please try again.'
+    if (!handleAuthError(err)) loadError.value = errorMessage(err, 'Couldn’t load sparklets.')
   } finally {
     loading.value = false
   }
 }
 
-const getImageUrl = (filename) => {
-  return `${API_BASE_URL}/contents/imgs/${filename}`
+const clearEditImage = () => {
+  if (editImagePreview.value) URL.revokeObjectURL(editImagePreview.value)
+  editImagePreview.value = ''
+  editImageFile.value = null
 }
 
-const formatDate = (dateString) => {
-  const date = new Date(dateString)
-  return date.toLocaleDateString() + ' ' + date.toLocaleTimeString()
-}
-
-const openEditModal = (sparklet) => {
-  sparkletToEdit.value = sparklet
+const openEdit = (s) => {
+  editing.value = s
   editData.value = {
-    to_name: sparklet.to_name,
-    from_name: sparklet.from_name,
-    message: sparklet.message,
-    background_color: sparklet.background_color,
-    card_color: sparklet.card_color,
-    text_color: sparklet.text_color,
-    card_rotation: sparklet.card_rotation || 5
+    to_name: s.to_name,
+    from_name: s.from_name,
+    message: s.message,
+    background_color: s.background_color,
+    card_color: s.card_color,
+    text_color: s.text_color,
+    card_rotation: s.card_rotation ?? 5,
+    entry_animation: s.entry_animation || 'drop'
   }
-  editImageFile.value = null
-  editError.value = null
-  showEditModal.value = true
+  clearEditImage()
+  editError.value = ''
 }
 
-const cancelEdit = () => {
-  sparkletToEdit.value = null
-  editImageFile.value = null
-  editError.value = null
-  showEditModal.value = false
+const closeEdit = () => {
+  editing.value = null
+  clearEditImage()
 }
 
-const handleEditImageChange = (event) => {
-  const file = event.target.files[0]
-  if (file) {
-    editImageFile.value = file
+const pickEditImage = (file) => {
+  clearEditImage()
+  editImageFile.value = file
+  editImagePreview.value = URL.createObjectURL(file)
+}
+
+const saveEdit = async () => {
+  const d = editData.value
+  if (!d.to_name.trim() || !d.from_name.trim() || !d.message.trim()) {
+    editError.value = 'To, From and Message all need something in them.'
+    return
   }
-}
-
-const updateSparklet = async () => {
-  if (!sparkletToEdit.value) return
-
+  saving.value = true
+  editError.value = ''
   try {
-    updating.value = true
-    editError.value = null
-
-    const formData = new FormData()
-    formData.append('to_name', editData.value.to_name)
-    formData.append('from_name', editData.value.from_name)
-    formData.append('message', editData.value.message)
-    formData.append('background_color', editData.value.background_color)
-    formData.append('card_color', editData.value.card_color)
-    formData.append('text_color', editData.value.text_color)
-    formData.append('card_rotation', editData.value.card_rotation)
-
-    if (editImageFile.value) {
-      formData.append('image', editImageFile.value)
-    }
-
-    await axios.put(`${API_BASE_URL}/api/sparklets/${sparkletToEdit.value.id}`, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data'
-      }
-    })
-
-    // Reload sparklets to get updated data
+    const file = editImagePreview.value ? await editCropper.value.getCroppedFile() : null
+    await api.put(`/api/sparklets/${editing.value.id}`, buildSparkletForm(d, file), { headers: adminHeaders() })
+    toast('Changes saved', { tone: 'ok' })
+    closeEdit()
     await loadSparklets()
-
-    // Close modal
-    cancelEdit()
   } catch (err) {
-    console.error('Failed to update sparklet:', err)
-    editError.value = err.response?.data?.detail || 'Failed to update sparklet. Please try again.'
+    if (handleAuthError(err)) closeEdit()
+    else editError.value = errorMessage(err, 'Couldn’t save changes.')
   } finally {
-    updating.value = false
+    saving.value = false
   }
-}
-
-const confirmDelete = (sparklet) => {
-  sparkletToDelete.value = sparklet
-  showDeleteModal.value = true
-}
-
-const cancelDelete = () => {
-  sparkletToDelete.value = null
-  showDeleteModal.value = false
 }
 
 const deleteSparklet = async () => {
-  if (!sparkletToDelete.value) return
-
+  deleting.value = true
+  const target = toDelete.value
   try {
-    await axios.delete(`${API_BASE_URL}/api/sparklets/${sparkletToDelete.value.id}`)
-
-    // Remove from local array
-    sparklets.value = sparklets.value.filter(s => s.id !== sparkletToDelete.value.id)
-
-    // Close modal
-    cancelDelete()
+    await api.delete(`/api/sparklets/${target.id}`, { headers: adminHeaders() })
+    sparklets.value = sparklets.value.filter((s) => s.id !== target.id)
+    toast('Sparklet deleted', { tone: 'ok' })
+    toDelete.value = null
   } catch (err) {
-    console.error('Failed to delete sparklet:', err)
-    error.value = 'Failed to delete sparklet. Please try again.'
-    cancelDelete()
+    toDelete.value = null
+    if (!handleAuthError(err)) toast(errorMessage(err, 'Couldn’t delete that sparklet.'), { tone: 'error' })
+  } finally {
+    deleting.value = false
   }
 }
 
 onMounted(() => {
-  loadSparklets()
+  if (getAdminToken()) {
+    authed.value = true
+    loadSparklets()
+  }
 })
+
+onBeforeUnmount(clearEditImage)
 </script>
 
 <style scoped>
-.manage-container {
-  max-width: 1400px;
+.manage {
+  max-width: 1180px;
   margin: 0 auto;
-  padding: 2rem;
+  padding: 1.5rem 1.25rem 3rem;
 }
 
 h1 {
-  font-size: 2.5rem;
-  margin-bottom: 2rem;
-  color: #333;
-  text-align: center;
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 1.1;
 }
 
-.loading,
-.error,
-.empty {
-  text-align: center;
-  padding: 3rem;
-  font-size: 1.2rem;
-}
+/* ---------- gate ---------- */
 
-.error {
-  color: #e74c3c;
-}
-
-.empty {
-  color: #666;
-}
-
-.sparklets-grid {
+.gate-wrap {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 2rem;
+  place-items: center;
+  min-height: 60dvh;
 }
 
-.sparklet-item {
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
+.gate {
+  display: grid;
+  gap: 1rem;
+  width: 100%;
+  max-width: 380px;
+  padding: 2rem;
+  text-align: center;
+}
+
+.gate-icon {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  margin: 0 auto;
+  border-radius: 16px;
+  background: var(--surface-2);
+}
+
+.gate-icon svg {
+  width: 26px;
+  height: 26px;
+}
+
+.gate h1 {
+  font-size: 1.5rem;
+}
+
+.gate p {
+  color: var(--ink-2);
+  font-size: 0.95rem;
+}
+
+code {
+  padding: 0.1em 0.35em;
+  border-radius: 6px;
+  background: var(--surface-2);
+  font-size: 0.9em;
+}
+
+/* ---------- list ---------- */
+
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.head p {
+  color: var(--ink-2);
+}
+
+.head-tools {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.search {
+  width: min(320px, 60vw);
+  border-radius: 999px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 1.25rem;
+}
+
+.tile {
   overflow: hidden;
-  background: white;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  transition: transform 0.2s, box-shadow 0.2s;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
 }
 
-.sparklet-item:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+.tile.skeleton {
+  aspect-ratio: 0.78;
+  background: linear-gradient(100deg, var(--surface) 30%, var(--surface-2) 50%, var(--surface) 70%) 0 0 / 300% 100%;
+  animation: shimmer 1.4s linear infinite;
 }
 
-.sparklet-preview {
-  padding: 1rem;
-  min-height: 250px;
+@keyframes shimmer {
+  to { background-position: -150% 0; }
+}
+
+.thumb {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1.15;
+}
+
+.thumb-card {
+  width: 62%;
+  transition: transform 0.25s cubic-bezier(0.2, 1, 0.3, 1);
+}
+
+.thumb:hover .thumb-card {
+  transform: translateY(-4px) scale(1.03);
+}
+
+.meta {
+  padding: 0.9rem 1rem 1rem;
+}
+
+.who {
   display: flex;
   align-items: center;
-  justify-content: center;
+  gap: 0.35rem;
+  min-width: 0;
 }
 
-.sparklet-card {
-  width: 200px;
-  height: 200px;
-  border-radius: 8px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-  transform: rotate(5deg);
+.who strong {
   overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 700;
+}
+
+.who svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  color: var(--ink-3);
+}
+
+.sub {
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 0.15rem;
+  font-size: 0.825rem;
+  color: var(--ink-3);
 }
 
-.image-section {
-  flex: 2;
-  overflow: hidden;
+.anim {
+  padding: 0 0.5rem;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--ink-2);
+  font-weight: 600;
 }
 
-.image-section img {
+.tile-actions {
+  display: flex;
+  gap: 0.4rem;
+  margin-top: 0.8rem;
+}
+
+.tile-actions .btn {
+  flex: 1;
+}
+
+.danger {
+  color: var(--danger);
+}
+
+.empty {
+  display: grid;
+  justify-items: center;
+  gap: 1rem;
+  padding: 4rem 1rem;
+  color: var(--ink-2);
+}
+
+/* ---------- modals ---------- */
+
+.edit {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.edit-preview {
+  position: sticky;
+  top: 1rem;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  border-radius: var(--radius-lg);
+}
+
+.edit-card {
+  width: 72%;
+}
+
+.current-photo {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-.message-section {
-  flex: 1;
-  padding: 0.5rem;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  font-size: 0.7rem;
-}
-
-.message {
-  margin: 0;
-  font-weight: 500;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-}
-
-.metadata {
-  margin-top: 0.25rem;
-}
-
-.metadata p {
-  margin: 0;
-  font-size: 0.65rem;
-}
-
-.sparklet-info {
-  padding: 1rem;
-  background: #f9f9f9;
-}
-
-.sparklet-info p {
-  margin: 0.5rem 0;
-  font-size: 0.9rem;
-  color: #666;
-}
-
-.actions {
-  margin-top: 1rem;
+.edit-fields {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.5rem;
-}
-
-.btn-view,
-.btn-edit,
-.btn-delete {
-  padding: 0.5rem 1rem;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.9rem;
-  transition: all 0.2s;
-  text-decoration: none;
-  text-align: center;
-}
-
-.btn-view {
-  background: #5568d3;
-  color: white;
-  display: block;
-  grid-column: span 2;
-}
-
-.btn-view:hover {
-  background: #4456b8;
-}
-
-.btn-edit {
-  background: #ff9800;
-  color: white;
-}
-
-.btn-edit:hover {
-  background: #f57c00;
-}
-
-.btn-delete {
-  background: #e74c3c;
-  color: white;
-}
-
-.btn-delete:hover {
-  background: #c0392b;
-}
-
-/* Modal Styles */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  overflow-y: auto;
-  padding: 2rem 1rem;
-}
-
-.modal {
-  background: white;
-  padding: 2rem;
-  border-radius: 8px;
-  max-width: 400px;
-  width: 90%;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-  margin: auto;
-}
-
-.edit-modal {
-  max-width: 600px;
-}
-
-.modal h2 {
-  margin: 0 0 1rem 0;
-  color: #333;
-}
-
-.modal p {
-  margin: 0.5rem 0;
-  color: #666;
-}
-
-.delete-info {
-  background: #f9f9f9;
-  padding: 1rem;
-  border-radius: 4px;
-  margin: 1rem 0;
-}
-
-.delete-info p {
-  margin: 0.25rem 0;
-  font-size: 0.9rem;
-}
-
-/* Edit Form Styles */
-.edit-form {
-  margin-top: 1.5rem;
-}
-
-.form-group {
-  margin-bottom: 1rem;
-}
-
-.form-group label {
-  display: block;
-  font-weight: 600;
-  margin-bottom: 0.5rem;
-  color: #2c3e50;
-  font-size: 0.9rem;
-}
-
-.form-group input[type="text"],
-.form-group textarea {
-  width: 100%;
-  padding: 0.75rem;
-  border: 2px solid #e0e0e0;
-  border-radius: 6px;
-  font-size: 1rem;
-  font-family: inherit;
-  transition: border-color 0.3s;
-}
-
-.form-group input[type="text"]:focus,
-.form-group textarea:focus {
-  outline: none;
-  border-color: #5568d3;
-}
-
-.form-group textarea {
-  resize: vertical;
-}
-
-.char-count {
-  display: block;
-  text-align: right;
-  font-size: 0.85rem;
-  color: #666;
-  margin-top: 0.25rem;
-}
-
-.form-group input[type="file"] {
-  padding: 0.5rem;
-  border: 2px dashed #e0e0e0;
-  border-radius: 6px;
-  cursor: pointer;
-  width: 100%;
-}
-
-.color-row {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1rem;
-  margin-bottom: 1rem;
-}
-
-.form-group input[type="color"] {
-  width: 100%;
-  height: 50px;
-  border: 2px solid #e0e0e0;
-  border-radius: 6px;
-  cursor: pointer;
-  padding: 0.25rem;
-}
-
-.edit-error {
-  padding: 1rem;
-  background-color: #ffebee;
-  color: #c62828;
-  border-radius: 6px;
-  text-align: center;
-  margin-bottom: 1rem;
-  font-size: 0.9rem;
+  gap: 1.25rem;
 }
 
 .modal-actions {
-  margin-top: 1.5rem;
   display: flex;
-  gap: 1rem;
   justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
 }
 
-.btn-cancel,
-.btn-confirm-delete,
-.btn-save {
-  padding: 0.75rem 1.5rem;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 1rem;
-  transition: all 0.2s;
-  font-weight: 600;
+.confirm-text {
+  color: var(--ink-2);
 }
 
-.btn-cancel {
-  background: #95a5a6;
-  color: white;
+.confirm-text strong {
+  color: var(--ink);
 }
 
-.btn-cancel:hover {
-  background: #7f8c8d;
-}
-
-.btn-confirm-delete {
-  background: #e74c3c;
-  color: white;
-}
-
-.btn-confirm-delete:hover {
-  background: #c0392b;
-}
-
-.btn-save {
-  background: #4caf50;
-  color: white;
-}
-
-.btn-save:hover {
-  background: #45a049;
-}
-
-.btn-save:disabled {
-  background: #cccccc;
-  cursor: not-allowed;
-}
-
-@media (max-width: 768px) {
-  .manage-container {
-    padding: 1rem;
-  }
-
-  h1 {
-    font-size: 2rem;
-  }
-
-  .sparklets-grid {
+@media (max-width: 760px) {
+  .edit {
     grid-template-columns: 1fr;
   }
 
-  .modal {
-    padding: 1.5rem;
+  .edit-preview {
+    position: static;
   }
 
-  .color-row {
-    grid-template-columns: 1fr;
+  .head-tools {
+    width: 100%;
+  }
+
+  .search {
+    flex: 1;
+    width: auto;
   }
 }
 </style>

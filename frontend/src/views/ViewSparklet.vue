@@ -1,255 +1,329 @@
 <template>
-  <div class="view-container" :style="{ backgroundColor: sparklet?.background_color || '#f0f0f0' }">
-    <div v-if="loading" class="loading">Loading sparklet...</div>
-    <div v-else-if="error" class="error-message">
-      <div class="error-emoji">😅</div>
-      <h2>Oops! Not Found</h2>
-      <p>{{ error }}</p>
-      <router-link to="/create" class="create-link">Create Your Own Sparklet</router-link>
+  <div class="view" :class="tone" :style="{ background: sparklet?.background_color || 'var(--bg)' }">
+    <div v-if="state === 'loading'" class="center">
+      <div class="loader" aria-label="Loading sparklet"><Icon name="sparkle" /></div>
     </div>
-    <div v-else-if="sparklet" class="sparklet-card" :style="{
-      backgroundColor: sparklet.card_color,
-      transform: `rotate(${sparklet.card_rotation || 5}deg)`
-    }">
-      <div class="image-section">
-        <img
-          :src="imageUrl"
-          :alt="`Sparklet from ${sparklet.from_name}`"
-          :style="{
-            transform: `translate(${sparklet.image_offset_x || 0}px, ${sparklet.image_offset_y || 0}px) scale(${sparklet.image_scale || 1})`
-          }"
-        />
-      </div>
-      <div class="message-section" :style="{ color: sparklet.text_color }">
-        <p class="message">{{ sparklet.message }}</p>
-        <div class="metadata">
-          <span class="to">To: {{ sparklet.to_name }}</span>
-          <span class="from">From: {{ sparklet.from_name }}</span>
+
+    <div v-else-if="state === 'error'" class="center">
+      <div class="missing panel">
+        <div class="missing-art" aria-hidden="true">
+          <SparkletCard message="?" card-color="#ffffff" text-color="#8f8aa5" :rotation="-6" :tape="false" />
+        </div>
+        <h1>{{ notFound ? 'This sparklet isn’t here' : 'Couldn’t load this sparklet' }}</h1>
+        <p>{{ notFound ? 'It may have been removed, or the link is incomplete. Check the link and try again.' : errorText }}</p>
+        <div class="missing-actions">
+          <button v-if="!notFound" type="button" class="btn btn-ghost" @click="load">Try again</button>
+          <router-link to="/create" class="btn btn-primary"><Icon name="plus" /> Make your own</router-link>
         </div>
       </div>
     </div>
+
+    <article v-else class="post" :aria-label="`A sparklet from ${sparklet.from_name} to ${sparklet.to_name}`">
+      <header class="post-head glass">
+        <span class="avatar" aria-hidden="true"><span>{{ initial }}</span></span>
+        <p class="byline">
+          <strong>{{ sparklet.from_name }}</strong>
+          <span>sent {{ sparklet.to_name }} a sparklet</span>
+        </p>
+        <time :datetime="sparklet.date_created">{{ timeAgo(sparklet.date_created) }}</time>
+      </header>
+
+      <div class="card-slot">
+        <SparkletStage :animation="sparklet.entry_animation" :play-key="playKey">
+          <SparkletCard
+            :message="sparklet.message"
+            :to-name="sparklet.to_name"
+            :from-name="sparklet.from_name"
+            :card-color="sparklet.card_color"
+            :text-color="sparklet.text_color"
+            :rotation="sparklet.card_rotation"
+            :image="imageUrl(sparklet.image_filename)"
+          />
+        </SparkletStage>
+      </div>
+
+      <footer class="post-actions glass">
+        <button type="button" class="act" aria-label="Replay entrance" title="Replay entrance" @click="playKey++">
+          <Icon name="reset" />
+        </button>
+        <button type="button" class="act" aria-label="Copy link" title="Copy link" @click="copyText(url)">
+          <Icon name="link" />
+        </button>
+        <button type="button" class="act" aria-label="Share or get QR code" title="Share" @click="shareOpen = true">
+          <Icon name="share" />
+        </button>
+        <router-link to="/create" class="btn btn-primary btn-sm make">
+          <Icon name="plus" /> Make your own
+        </router-link>
+      </footer>
+    </article>
+
+    <Modal :open="shareOpen" title="Share this sparklet" @close="shareOpen = false">
+      <SharePanel
+        v-if="sparklet"
+        :url="url"
+        :to-name="sparklet.to_name"
+        :from-name="sparklet.from_name"
+        :id="sparklet.id"
+      />
+    </Modal>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, nextTick } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import axios from 'axios'
+import Icon from '../components/Icon.vue'
+import Modal from '../components/Modal.vue'
+import SharePanel from '../components/SharePanel.vue'
+import SparkletCard from '../components/SparkletCard.vue'
+import SparkletStage from '../components/SparkletStage.vue'
+import { api, errorMessage, imageUrl, shareUrlFor, timeAgo } from '../lib/api'
+import { copyText } from '../lib/toast'
+import { contrastInk } from '../lib/themes'
 
 const route = useRoute()
 const sparklet = ref(null)
-const loading = ref(true)
-const error = ref(null)
+const state = ref('loading')
+const notFound = ref(false)
+const errorText = ref('')
+const playKey = ref(0)
+const shareOpen = ref(false)
 
-const imageUrl = computed(() => {
-  if (!sparklet.value) return ''
-  // In production, use relative URL; in dev, use localhost
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
-  return `${API_BASE_URL}/contents/imgs/${sparklet.value.image_filename}`
-})
+const url = computed(() => (sparklet.value ? shareUrlFor(sparklet.value.id) : ''))
+const initial = computed(() => (sparklet.value?.from_name || '?').trim().charAt(0).toUpperCase())
+const tone = computed(() => `on-${contrastInk(sparklet.value?.background_color)}`)
 
-onMounted(async () => {
-  const sparkletId = route.params.id
+// Let the photo arrive before the card makes its entrance (but never wait long).
+const preload = (src) =>
+  new Promise((resolve) => {
+    const img = new Image()
+    const done = () => resolve()
+    img.onload = done
+    img.onerror = done
+    setTimeout(done, 2500)
+    img.src = src
+  })
+
+const load = async () => {
+  state.value = 'loading'
+  notFound.value = false
   try {
-    const response = await axios.get(`/api/sparklets/${sparkletId}`)
-    sparklet.value = response.data
-
-    // Scroll to center the sparklet card after it loads
-    await nextTick()
-
-    // Wait for image to load before scrolling
-    const img = document.querySelector('.image-section img')
-    if (img) {
-      await new Promise((resolve) => {
-        if (img.complete) {
-          resolve()
-        } else {
-          img.onload = () => resolve()
-          img.onerror = () => resolve()
-        }
-      })
-    }
-
-    // Small delay to ensure everything is rendered
-    setTimeout(() => {
-      const sparkletCard = document.querySelector('.sparklet-card')
-      if (sparkletCard) {
-        sparkletCard.scrollIntoView({ behavior: 'instant', block: 'center' })
-      }
-    }, 100)
+    const { data } = await api.get(`/api/sparklets/${route.params.id}`)
+    await preload(imageUrl(data.image_filename))
+    sparklet.value = data
+    document.title = `A sparklet for ${data.to_name} · Sparklets`
+    state.value = 'ready'
   } catch (err) {
-    error.value = err.response?.data?.detail || 'Failed to load sparklet'
-  } finally {
-    loading.value = false
+    sparklet.value = null
+    notFound.value = err?.response?.status === 404
+    errorText.value = errorMessage(err, 'Something went wrong loading this sparklet.')
+    state.value = 'error'
   }
-})
+}
+
+watch(() => route.params.id, (id) => id && load(), { immediate: true })
 </script>
 
 <style scoped>
-.view-container {
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1rem;
-  transition: background-color 0.3s ease;
+.view {
+  min-height: calc(100dvh - var(--topbar-h) - var(--tabbar-h));
+  display: grid;
+  transition: background-color 0.4s;
+  overflow: clip;
 }
 
-.loading {
+.center {
+  display: grid;
+  place-items: center;
+  padding: 2rem 1rem;
+}
+
+.loader {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, var(--sun), var(--spark));
+  color: #fff;
+  animation: pulse 1.1s ease-in-out infinite;
+}
+
+.loader svg {
+  width: 28px;
+  height: 28px;
+  fill: #fff;
+  stroke: none;
+}
+
+@keyframes pulse {
+  50% { transform: scale(0.86) rotate(12deg); }
+}
+
+/* ---------- not found ---------- */
+
+.missing {
+  max-width: 420px;
+  padding: 2rem;
   text-align: center;
-  font-size: 1.2rem;
-  color: #333;
 }
 
-.error-message {
-  text-align: center;
-  background: white;
-  padding: 3rem 2rem;
-  border-radius: 16px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
-  max-width: 500px;
-  margin: 2rem;
+.missing-art {
+  width: 120px;
+  margin: 0 auto 1.5rem;
 }
 
-.error-emoji {
-  font-size: 5rem;
-  margin-bottom: 1rem;
-  animation: bounce 1s ease-in-out;
+.missing-art :deep(.message) {
+  font-size: 30cqw;
 }
 
-@keyframes bounce {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-10px); }
+.missing h1 {
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  line-height: 1.15;
 }
 
-.error-message h2 {
-  color: #333;
-  font-size: 2rem;
-  margin: 0 0 1rem 0;
+.missing p {
+  margin-top: 0.5rem;
+  color: var(--ink-2);
 }
 
-.error-message p {
-  color: #666;
-  font-size: 1.1rem;
-  margin: 0 0 2rem 0;
-}
-
-.create-link {
-  display: inline-block;
-  background: linear-gradient(135deg, #5568d3 0%, #633a8a 100%);
-  color: white;
-  padding: 0.75rem 2rem;
-  border-radius: 8px;
-  text-decoration: none;
-  font-weight: 600;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 12px rgba(85, 104, 211, 0.3);
-}
-
-.create-link:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(85, 104, 211, 0.4);
-}
-
-.sparklet-card {
-  width: 90vw;
-  max-width: 400px;
-  aspect-ratio: 1;
-  border-radius: 8px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  transform: rotate(10deg);
-  transition: all 0.3s ease;
-  overflow: hidden;
+.missing-actions {
   display: flex;
-  flex-direction: column;
-}
-
-.sparklet-card:hover {
-  transform: rotate(10deg) translateY(-8px);
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.2);
-}
-
-.image-section {
-  flex: 2;
-  overflow: hidden;
-  display: flex;
-  align-items: center;
+  flex-wrap: wrap;
   justify-content: center;
-  background-color: #f5f5f5;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
 }
 
-.image-section img {
-  width: 100%;
-  object-fit: cover;
-  transform-origin: center center;
-}
+/* ---------- the post ---------- */
 
-.message-section {
-  flex: 1;
-  padding: 1rem;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  font-family: 'Kalam', cursive;
-}
-
-.message {
-  font-size: 1.2rem;
-  line-height: 1.2;
-  margin: 0 0 0.5rem 0;
-  overflow-wrap: break-word;
-  text-align: center;
-  overflow: hidden;
-  max-height: 100%;
-}
-
-.metadata {
-  font-size: 0.75rem;
-  opacity: 0.8;
-  display: flex;
-  justify-content: center;
+.post {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  justify-items: center;
   gap: 1rem;
+  width: 100%;
+  max-width: 620px;
+  margin: 0 auto;
+  padding: 1.25rem 1rem 1.5rem;
 }
 
-.from {
-  font-weight: 600;
+.glass {
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: saturate(1.5) blur(14px);
+  -webkit-backdrop-filter: saturate(1.5) blur(14px);
+  color: #1d1a2b;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05), 0 8px 24px -10px rgba(0, 0, 0, 0.18);
+}
+
+.on-dark .glass {
+  background: rgba(20, 18, 34, 0.55);
+  color: #f3f1fa;
+}
+
+.post-head {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.55rem 1rem 0.55rem 0.55rem;
+  border-radius: 999px;
+}
+
+.avatar {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  flex: none;
+  padding: 2.5px;
+  border-radius: 50%;
+  background: var(--ring);
+}
+
+.avatar span {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  border: 2.5px solid #fff;
+  background: #1d1a2b;
+  color: #fff;
+  font-weight: 800;
   font-size: 1rem;
 }
 
-.to {
+.byline {
+  flex: 1;
+  min-width: 0;
+  line-height: 1.25;
+  font-size: 0.95rem;
+}
+
+.byline strong {
+  display: block;
+  font-weight: 750;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.byline span {
+  display: block;
+  opacity: 0.75;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+time {
+  flex: none;
+  font-size: 0.8rem;
   font-weight: 600;
-  font-size: 1rem;
+  opacity: 0.65;
 }
 
-@media (min-width: 768px) {
-  .sparklet-card {
-    max-width: 450px;
-  }
-
-  .message {
-    font-size: 1.2rem;
-  }
-
-  .metadata {
-    font-size: 0.85rem;
-  }
+.card-slot {
+  align-self: center;
+  width: min(500px, 86vw, calc((100dvh - var(--topbar-h) - var(--tabbar-h) - 220px)));
+  min-width: 240px;
+  padding: 2rem 0;
 }
 
-@media (min-width: 1024px) {
-  .sparklet-card {
-    max-width: 500px;
-  }
+.post-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.4rem;
+  border-radius: 999px;
 }
 
-@media (max-width: 640px) {
-  .message {
-    font-size: 1rem;
-    line-height: 1;
-  }
+.act {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
 
-  .from,
-  .to {
-    font-size: 0.9rem;
-  }
+.act:hover {
+  background: rgba(127, 127, 127, 0.16);
+}
+
+.act svg {
+  width: 21px;
+  height: 21px;
+}
+
+.make {
+  margin-left: 0.35rem;
 }
 </style>

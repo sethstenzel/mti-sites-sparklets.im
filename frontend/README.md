@@ -34,5 +34,4 @@ npm run preview
 - Vue 3
 - Vite
 - Vue Router
-- Pinia (state management)
 - Axios (HTTP client)

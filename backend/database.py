@@ -4,6 +4,15 @@ from pathlib import Path
 
 DB_PATH = Path(__file__).parent / "sparklets.sqlite"
 
+# Columns added after the original schema: (name, definition)
+MIGRATIONS = [
+    ("card_rotation", "INTEGER DEFAULT 5"),
+    ("image_offset_x", "REAL DEFAULT 0"),
+    ("image_offset_y", "REAL DEFAULT 0"),
+    ("image_scale", "REAL DEFAULT 1"),
+    ("entry_animation", "TEXT DEFAULT 'drop'"),
+]
+
 
 @contextmanager
 def get_db():
@@ -31,34 +40,12 @@ def init_db():
                 card_rotation INTEGER DEFAULT 5,
                 image_offset_x REAL DEFAULT 0,
                 image_offset_y REAL DEFAULT 0,
-                image_scale REAL DEFAULT 1
+                image_scale REAL DEFAULT 1,
+                entry_animation TEXT DEFAULT 'drop'
             )
         """)
+        existing = {row["name"] for row in conn.execute("PRAGMA table_info(sparklets)")}
+        for name, definition in MIGRATIONS:
+            if name not in existing:
+                conn.execute(f"ALTER TABLE sparklets ADD COLUMN {name} {definition}")
         conn.commit()
-
-        # Migration: Add card_rotation column if it doesn't exist
-        try:
-            conn.execute("ALTER TABLE sparklets ADD COLUMN card_rotation INTEGER DEFAULT 5")
-            conn.commit()
-        except sqlite3.OperationalError:
-            # Column already exists
-            pass
-
-        # Migration: Add image position columns if they don't exist
-        try:
-            conn.execute("ALTER TABLE sparklets ADD COLUMN image_offset_x REAL DEFAULT 0")
-            conn.commit()
-        except sqlite3.OperationalError:
-            pass
-
-        try:
-            conn.execute("ALTER TABLE sparklets ADD COLUMN image_offset_y REAL DEFAULT 0")
-            conn.commit()
-        except sqlite3.OperationalError:
-            pass
-
-        try:
-            conn.execute("ALTER TABLE sparklets ADD COLUMN image_scale REAL DEFAULT 1")
-            conn.commit()
-        except sqlite3.OperationalError:
-            pass
