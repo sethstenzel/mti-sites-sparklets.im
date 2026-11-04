@@ -69,6 +69,28 @@
       </button>
     </div>
 
+    <div class="send">
+      <span class="field-label">Send it</span>
+      <div class="send-row">
+        <button type="button" class="send-btn facebook" @click="shareFacebook">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 8.5V6.8c0-.8.5-1 .9-1h2.4V2.1L14 2c-3.7 0-4.5 2.7-4.5 4.5v2H7v3.8h2.5V22H14v-9.7h3l.4-3.8H14z" /></svg>
+          Facebook
+        </button>
+        <button type="button" class="send-btn messenger" @click="shareMessenger">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2C6.4 2 2 6.1 2 11.6c0 2.9 1.2 5.4 3.1 7.1V22l2.9-1.6c1.2.3 2.6.5 4 .5 5.6 0 10-4.1 10-9.6S17.6 2 12 2zm1 12.9-2.6-2.7-5 2.7 5.5-5.8 2.6 2.7 4.9-2.7-5.4 5.8z" /></svg>
+          Messenger
+        </button>
+        <button type="button" class="send-btn x" @click="shareX">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17.8 3h3.1l-6.8 7.7L22 21h-6.2l-4.9-6.4L5.3 21H2.2l7.3-8.3L2 3h6.4l4.4 5.8L17.8 3zm-1.1 16.2h1.7L7.4 4.7H5.6l11.1 14.5z" /></svg>
+          X
+        </button>
+        <a class="send-btn email" :href="mailtoHref">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zm9 7.2L4.3 7H4v.6l8 5.4 8-5.4V7h-.3L12 12.2z" /></svg>
+          Email
+        </a>
+      </div>
+    </div>
+
     <div class="actions">
       <button type="button" class="btn btn-ghost" :disabled="!qrDataUrl" @click="downloadImage">
         <Icon name="download" /> Save QR image
@@ -172,11 +194,53 @@ const downloadImage = () => {
   }
 }
 
+// ---------- sharing ----------
+// Copy is deliberately generic, like the link preview: it never repeats the message.
+const SHARE_TITLE = 'You’ve got a sparklet ✨'
+const shareText = computed(() =>
+  props.toName ? `${props.toName}, a special message is waiting for you ✨` : 'A special message is waiting for you ✨'
+)
+
+const openPopup = (href) => {
+  const w = 600
+  const h = 640
+  const left = Math.max(0, (window.screen.width - w) / 2)
+  const top = Math.max(0, (window.screen.height - h) / 2)
+  const win = window.open(href, 'sparklets-share', `width=${w},height=${h},left=${left},top=${top}`)
+  if (win) win.opener = null
+  else window.open(href, '_blank', 'noopener')
+}
+
+const enc = encodeURIComponent
+const isMobile = () => /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
+
+const shareFacebook = () => openPopup(`https://www.facebook.com/sharer/sharer.php?u=${enc(props.url)}`)
+
+const shareX = () => openPopup(`https://twitter.com/intent/tweet?text=${enc(shareText.value)}&url=${enc(props.url)}`)
+
+// Messenger has no web share link without a registered Facebook app, so on desktop we copy
+// the link and open Messenger for pasting; phones open the Messenger app directly.
+const shareMessenger = async () => {
+  if (isMobile()) {
+    window.location.href = `fb-messenger://share/?link=${enc(props.url)}`
+    return
+  }
+  await copyText(props.url, 'Link copied. Paste it into your Messenger chat')
+  window.open('https://www.messenger.com/', '_blank', 'noopener')
+}
+
+const mailtoHref = computed(() => {
+  const greeting = props.toName ? `Hi ${props.toName},\n\n` : ''
+  const sign = props.fromName ? `\n\n${props.fromName}` : ''
+  const body = `${greeting}A special message is waiting for you on Sparklets. Open it here:\n${props.url}${sign}`
+  return `mailto:?subject=${enc(SHARE_TITLE)}&body=${enc(body)}`
+})
+
 const nativeShare = async () => {
   try {
     await navigator.share({
-      title: 'A sparklet for you',
-      text: props.toName ? `${props.toName}, someone sent you a sparklet` : 'Someone sent you a sparklet',
+      title: SHARE_TITLE,
+      text: shareText.value,
       url: props.url
     })
   } catch {
@@ -410,6 +474,69 @@ legend {
   color: var(--ink-2);
 }
 
+.send {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.send-row {
+  display: grid;
+  /* sized to the labels: Messenger is longest, X shortest */
+  grid-template-columns: 1.12fr 1.3fr 0.68fr 0.9fr;
+  gap: 0.5rem;
+}
+
+.send-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0 0.5rem;
+  border: 0;
+  border-radius: 999px;
+  color: #fff;
+  font-weight: 650;
+  font-size: 0.875rem;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: filter 0.15s, transform 0.1s;
+}
+
+.send-btn:hover {
+  filter: brightness(1.08);
+}
+
+.send-btn:active {
+  transform: scale(0.97);
+}
+
+.send-btn svg {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  fill: currentColor;
+}
+
+.send-btn.facebook {
+  background: #1877f2;
+}
+
+.send-btn.messenger {
+  background: linear-gradient(135deg, #0a7cff, #a033ff 60%, #ff5c87);
+}
+
+.send-btn.x {
+  background: #0f1419;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+}
+
+.send-btn.email {
+  background: var(--spark);
+}
+
 .actions {
   display: flex;
   flex-wrap: wrap;
@@ -418,6 +545,12 @@ legend {
 
 .actions .btn {
   flex: 1 1 auto;
+}
+
+@media (max-width: 460px) {
+  .send-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 400px) {

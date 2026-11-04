@@ -17,9 +17,27 @@
         document.querySelector('meta[name="theme-color"]').setAttribute('content', themes[id]);
       })();
     </script>
-    <meta property="og:title" content="Sparklets.im">
-    <meta property="og:description" content="Make a little photo note and share it with a link or a QR code.">
+    <!--
+      Link previews (iMessage, WhatsApp, Facebook, X, Slack…). Crawlers don't run JS, so
+      these are static and deliberately generic: they never reveal who a sparklet is from
+      or what it says.
+    -->
+    <meta property="og:site_name" content="Sparklets">
     <meta property="og:type" content="website">
+    <meta property="og:title" content="You’ve got a sparklet ✨">
+    <meta property="og:description" content="A special message is waiting for you. Tap to open it.">
+    <meta property="og:image" content="https://sparklets.im/og-image.jpg">
+    <meta property="og:image:secure_url" content="https://sparklets.im/og-image.jpg">
+    <meta property="og:image:type" content="image/jpeg">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="Two polaroid-style photo notes with the words: You’ve got a sparklet. A special message is waiting for you.">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="You’ve got a sparklet ✨">
+    <meta name="twitter:description" content="A special message is waiting for you. Tap to open it.">
+    <meta name="twitter:image" content="https://sparklets.im/og-image.jpg">
+    <meta name="twitter:image:alt" content="Two polaroid-style photo notes with the words: You’ve got a sparklet. A special message is waiting for you.">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
