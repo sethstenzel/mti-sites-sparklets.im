@@ -5,6 +5,7 @@
     :class="{ dragging: pointers.size > 0 }"
     tabindex="0"
     role="application"
+    :style="{ background: matte }"
     aria-label="Photo framing. Drag or use arrow keys to move, plus and minus to zoom."
     @pointerdown="onPointerDown"
     @pointermove="onPointerMove"
@@ -46,11 +47,14 @@ const props = defineProps({
   src: { type: String, required: true },
   aspect: { type: Number, default: 3 / 2 },
   rotation: { type: Number, default: 0 },
-  fileName: { type: String, default: 'sparklet.jpg' }
+  fileName: { type: String, default: 'sparklet.jpg' },
+  // fills transparent areas (e.g. PNG cut-outs) — the card color, so it matches the preview
+  matte: { type: String, default: '#ffffff' }
 })
 
 const MAX_ZOOM = 4
-const OUTPUT_WIDTH = 1200
+const OUTPUT_WIDTH = 1000 // 2x the largest card the site renders
+const JPEG_QUALITY = 0.85
 
 const frame = ref(null)
 const img = ref(null)
@@ -191,7 +195,7 @@ const getCroppedFile = () =>
     canvas.width = outW
     canvas.height = outH
     const ctx = canvas.getContext('2d')
-    ctx.fillStyle = '#ffffff'
+    ctx.fillStyle = props.matte
     ctx.fillRect(0, 0, outW, outH)
     ctx.imageSmoothingQuality = 'high'
     ctx.drawImage(img.value, sx, sy, sw, sh, 0, 0, outW, outH)
@@ -203,7 +207,7 @@ const getCroppedFile = () =>
         resolve(new File([blob], `${base}.jpg`, { type: 'image/jpeg', lastModified: Date.now() }))
       },
       'image/jpeg',
-      0.9
+      JPEG_QUALITY
     )
   })
 

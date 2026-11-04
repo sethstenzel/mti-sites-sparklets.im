@@ -64,7 +64,7 @@ const sizeClass = computed(() => {
   flex-direction: column;
   padding: 4.5cqw 4.5cqw 3.5cqw;
   background:
-    linear-gradient(160deg, rgba(255, 255, 255, 0.35), rgba(255, 255, 255, 0) 45%),
+    linear-gradient(160deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0) 40%),
     var(--card);
   border-radius: 1.6cqw;
   transform: rotate(var(--tilt));

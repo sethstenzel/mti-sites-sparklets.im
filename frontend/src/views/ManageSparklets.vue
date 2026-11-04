@@ -99,6 +99,7 @@
                     ref="editCropper"
                     :src="editImagePreview"
                     :rotation="editData.card_rotation"
+                    :matte="editData.card_color"
                     :file-name="editImageFile?.name"
                   />
                   <img v-else :src="imageUrl(editing.image_filename)" alt="" class="current-photo" />

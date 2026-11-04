@@ -37,7 +37,8 @@ ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", "")
 
 MAX_NAME_LENGTH = 100
 MAX_MESSAGE_LENGTH = 100
-MAX_IMAGE_WIDTH = 1200
+MAX_IMAGE_WIDTH = 1000  # 2x the largest card the site renders
+JPEG_QUALITY = 82
 HEX_COLOR = re.compile(r"^#[0-9a-fA-F]{6}$")
 ANIMATIONS = {"drop", "flip", "twirl", "rise", "pop", "none"}
 DEFAULT_ANIMATION = "drop"
@@ -102,8 +103,14 @@ def validate_text(value: str, field: str, max_length: int) -> str:
     return value
 
 
-def process_image(data: bytes, max_width: int = MAX_IMAGE_WIDTH) -> bytes:
-    """Normalize an upload: fix EXIF rotation, flatten to RGB, cap width, encode JPEG."""
+def hex_to_rgb(value: str) -> tuple[int, int, int]:
+    value = value.lstrip("#")
+    return tuple(int(value[i : i + 2], 16) for i in (0, 2, 4))
+
+
+def process_image(data: bytes, matte: str = "#ffffff", max_width: int = MAX_IMAGE_WIDTH) -> bytes:
+    """Normalize an upload: fix EXIF rotation, flatten transparency onto the card color,
+    cap the width and encode as a compact progressive JPEG (metadata stripped)."""
     try:
         img = Image.open(BytesIO(data))
         img = ImageOps.exif_transpose(img)
@@ -112,7 +119,7 @@ def process_image(data: bytes, max_width: int = MAX_IMAGE_WIDTH) -> bytes:
 
     if img.mode in ("RGBA", "LA") or (img.mode == "P" and "transparency" in img.info):
         img = img.convert("RGBA")
-        background = Image.new("RGB", img.size, (255, 255, 255))
+        background = Image.new("RGB", img.size, hex_to_rgb(matte))
         background.paste(img, mask=img.split()[-1])
         img = background
     elif img.mode != "RGB":
@@ -123,12 +130,12 @@ def process_image(data: bytes, max_width: int = MAX_IMAGE_WIDTH) -> bytes:
         img = img.resize((max_width, new_height), Image.Resampling.LANCZOS)
 
     output = BytesIO()
-    img.save(output, format="JPEG", quality=88, optimize=True, progressive=True)
+    img.save(output, format="JPEG", quality=JPEG_QUALITY, optimize=True, progressive=True)
     return output.getvalue()
 
 
-async def save_upload(image: UploadFile) -> str:
-    processed = process_image(await image.read())
+async def save_upload(image: UploadFile, matte: str) -> str:
+    processed = process_image(await image.read(), matte)
     filename = f"{uuid.uuid4().hex}.jpg"
     (IMAGES_DIR / filename).write_bytes(processed)
     return filename
@@ -224,7 +231,7 @@ async def create_sparklet(
         max(-10, min(10, card_rotation)),
         validate_animation(entry_animation),
     )
-    image_filename = await save_upload(image)
+    image_filename = await save_upload(image, matte=values[4])
 
     with get_db() as conn:
         cursor = conn.execute(
@@ -276,7 +283,7 @@ async def update_sparklet(
 
         image_filename = row["image_filename"]
         if image is not None and image.filename:
-            new_filename = await save_upload(image)
+            new_filename = await save_upload(image, matte=values[4])
             delete_image(image_filename)
             image_filename = new_filename
 

@@ -70,6 +70,7 @@
                 ref="cropper"
                 :src="imagePreview"
                 :rotation="form.card_rotation"
+                :matte="form.card_color"
                 :file-name="imageFile?.name"
               />
               <img v-else-if="croppedPreview" :src="croppedPreview" alt="" class="cropped" />
