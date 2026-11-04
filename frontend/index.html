@@ -5,8 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Sparklets.im</title>
     <meta name="description" content="Make a little photo note and share it with a link or a QR code.">
-    <meta name="theme-color" content="#F7F6FB" media="(prefers-color-scheme: light)">
-    <meta name="theme-color" content="#15131F" media="(prefers-color-scheme: dark)">
+    <meta name="theme-color" content="#fbf7fb">
+    <script>
+      // Apply the saved site theme before first paint (no flash of the wrong colors).
+      (function () {
+        var themes = { neutral: '#fafafa', blush: '#fbf7fb', slate: '#0e1318' };
+        var id = null;
+        try { id = localStorage.getItem('sparklets.siteTheme'); } catch (e) {}
+        if (!themes[id]) id = window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'slate' : 'blush';
+        document.documentElement.setAttribute('data-theme', id);
+        document.querySelector('meta[name="theme-color"]').setAttribute('content', themes[id]);
+      })();
+    </script>
     <meta property="og:title" content="Sparklets.im">
     <meta property="og:description" content="Make a little photo note and share it with a link or a QR code.">
     <meta property="og:type" content="website">

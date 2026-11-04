@@ -317,8 +317,8 @@ h1 {
 }
 
 .steps li:nth-child(3) .step-n {
-  background: var(--sun);
-  color: #1d1a2b;
+  background: var(--accent-2);
+  color: var(--on-accent-2);
 }
 
 .steps h3 {
@@ -403,7 +403,7 @@ h1 {
   padding: 4.5rem 1.25rem;
   text-align: center;
   border-radius: 32px;
-  background: linear-gradient(135deg, var(--sun), var(--spark));
+  background: var(--brand-grad);
   color: #fff;
   max-width: calc(1180px - 2.5rem);
 }

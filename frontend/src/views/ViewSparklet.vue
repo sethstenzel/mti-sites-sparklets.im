@@ -145,7 +145,7 @@ watch(() => route.params.id, (id) => id && load(), { immediate: true })
   width: 56px;
   height: 56px;
   border-radius: 18px;
-  background: linear-gradient(135deg, var(--sun), var(--spark));
+  background: var(--brand-grad);
   color: #fff;
   animation: pulse 1.1s ease-in-out infinite;
 }

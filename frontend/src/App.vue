@@ -10,9 +10,12 @@
         <router-link to="/" class="navlink" exact-active-class="active">Home</router-link>
         <router-link to="/sparklet/1" class="navlink" active-class="active">Example</router-link>
       </nav>
-      <router-link to="/create" class="btn btn-primary btn-sm create-btn">
-        <Icon name="plus" /> Create
-      </router-link>
+      <div class="topbar-actions">
+        <router-link to="/create" class="btn btn-primary btn-sm create-btn">
+          <Icon name="plus" /> Create
+        </router-link>
+        <ThemePicker />
+      </div>
     </div>
   </header>
 
@@ -45,6 +48,7 @@
 <script setup>
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 import Icon from './components/Icon.vue'
+import ThemePicker from './components/ThemePicker.vue'
 import { toasts } from './lib/toast'
 
 const scrolled = ref(false)
@@ -111,7 +115,7 @@ onBeforeUnmount(() => window.removeEventListener('scroll', onScroll))
   width: 34px;
   height: 34px;
   border-radius: 11px;
-  background: linear-gradient(135deg, var(--sun), var(--spark));
+  background: var(--brand-grad);
   color: #fff;
   transform: rotate(-6deg);
 }
@@ -134,6 +138,13 @@ onBeforeUnmount(() => window.removeEventListener('scroll', onScroll))
   display: flex;
   gap: 0.25rem;
   margin-right: auto;
+}
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-left: auto;
 }
 
 .navlink {
@@ -174,7 +185,7 @@ main {
   }
 
   .topbar-inner {
-    justify-content: center;
+    padding: 0 1rem;
   }
 
   .tabbar {
@@ -219,7 +230,7 @@ main {
     width: 56px;
     height: 40px;
     border-radius: 14px;
-    background: linear-gradient(135deg, var(--sun), var(--spark));
+    background: var(--brand-grad);
     color: #fff;
     box-shadow: 0 6px 16px -6px var(--spark);
   }

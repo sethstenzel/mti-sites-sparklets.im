@@ -130,7 +130,7 @@ watch(
   width: 14px;
   height: 14px;
   margin: -7px;
-  background: var(--sun);
+  background: var(--accent-2);
   clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%);
   opacity: 0;
   animation: burst 0.9s 0.15s ease-out both;

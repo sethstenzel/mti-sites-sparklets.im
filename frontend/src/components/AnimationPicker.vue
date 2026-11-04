@@ -83,7 +83,7 @@ legend {
   width: 16px;
   height: 16px;
   border-radius: 4px;
-  background: linear-gradient(135deg, var(--sun), var(--spark));
+  background: var(--brand-grad);
 }
 
 /* tiny looping hint of each motion on hover / when selected */

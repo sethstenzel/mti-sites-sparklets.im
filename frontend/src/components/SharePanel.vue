@@ -101,9 +101,12 @@ const downloadTag = async () => {
     canvas.height = H
     const ctx = canvas.getContext('2d')
 
+    const css = getComputedStyle(document.documentElement)
+    const spark = css.getPropertyValue('--spark').trim() || '#ff3d6e'
+    const accent = css.getPropertyValue('--accent-2').trim() || '#a66cff'
     const grad = ctx.createLinearGradient(0, 0, W, H)
-    grad.addColorStop(0, '#ffb800')
-    grad.addColorStop(1, '#ff3d6e')
+    grad.addColorStop(0, accent)
+    grad.addColorStop(1, spark)
     ctx.fillStyle = grad
     ctx.fillRect(0, 0, W, H)
 
@@ -124,7 +127,7 @@ const downloadTag = async () => {
     const caption = props.fromName ? `Scan me to open a note from ${props.fromName}` : 'Scan me to open your note'
     ctx.fillText(caption, W / 2, 150 + W - 240 + 64, W - 160)
     ctx.font = '700 24px "Bricolage Grotesque", sans-serif'
-    ctx.fillStyle = '#ff3d6e'
+    ctx.fillStyle = spark
     ctx.fillText('sparklets.im', W / 2, H - 78)
 
     const link = document.createElement('a')
@@ -151,7 +154,7 @@ const downloadTag = async () => {
   gap: 0.5rem;
   padding: 1.25rem;
   border-radius: var(--radius);
-  background: linear-gradient(135deg, var(--sun), var(--spark));
+  background: var(--brand-grad);
 }
 
 .qr-tile img,

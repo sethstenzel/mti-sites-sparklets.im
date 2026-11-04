@@ -90,7 +90,7 @@ const onDrop = (e) => {
   height: 48px;
   margin-bottom: 0.4rem;
   border-radius: 14px;
-  background: linear-gradient(135deg, var(--sun), var(--spark));
+  background: var(--brand-grad);
   color: #fff;
 }
 
