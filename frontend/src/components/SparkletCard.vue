@@ -17,7 +17,7 @@
     </div>
     <figcaption class="note">
       <p class="message" :class="sizeClass">{{ message || messagePlaceholder }}</p>
-      <p class="signature">
+      <p class="signature" :class="sigSizeClass">
         <span>To {{ toName || toPlaceholder }}</span>
         <span>From {{ fromName || fromPlaceholder }}</span>
       </p>
@@ -43,6 +43,14 @@ const props = defineProps({
 })
 
 const alt = computed(() => (props.fromName ? `Photo from ${props.fromName}` : 'Sparklet photo'))
+
+// To and From always share one row; shrink the signature a step when the names are long
+const sigSizeClass = computed(() => {
+  const total = (props.toName || props.toPlaceholder).length + (props.fromName || props.fromPlaceholder).length
+  if (total > 44) return 'sig-sm'
+  if (total > 32) return 'sig-md'
+  return ''
+})
 
 const sizeClass = computed(() => {
   const text = props.message || props.messagePlaceholder
@@ -146,10 +154,8 @@ const sizeClass = computed(() => {
 
 .signature {
   display: flex;
-  flex-wrap: wrap;
   justify-content: space-between;
-  column-gap: 3cqw;
-  row-gap: 0.4cqw;
+  gap: 5cqw;
   padding-top: 1.2cqw;
   font-size: 3.4cqw;
   font-weight: 700;
@@ -157,12 +163,16 @@ const sizeClass = computed(() => {
   opacity: 0.82;
 }
 
-.signature span:last-child {
-  margin-left: auto;
+.signature.sig-md {
+  font-size: 2.9cqw;
+}
+
+.signature.sig-sm {
+  font-size: 2.5cqw;
 }
 
 .signature span {
-  max-width: 100%;
+  flex: 0 1 auto;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
