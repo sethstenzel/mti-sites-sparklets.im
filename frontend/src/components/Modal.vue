@@ -76,11 +76,15 @@ onBeforeUnmount(() => {
   backdrop-filter: blur(6px);
 }
 
+/* The dialog clips to its rounded corners; only the body scrolls, so the scroll bar
+   sits inside the rounded shape instead of squaring off a corner. */
 .dialog {
+  display: flex;
+  flex-direction: column;
   width: 100%;
   max-width: 440px;
   max-height: calc(100dvh - 2rem);
-  overflow-y: auto;
+  overflow: hidden;
   background: var(--surface);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
@@ -95,8 +99,7 @@ onBeforeUnmount(() => {
 }
 
 .head {
-  position: sticky;
-  top: 0;
+  flex: none;
   z-index: 3;
   display: flex;
   align-items: center;
@@ -114,7 +117,27 @@ onBeforeUnmount(() => {
 }
 
 .body {
+  flex: 1;
+  min-height: 0;
   padding: 1.4rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+}
+
+.body::-webkit-scrollbar {
+  width: 10px;
+}
+
+.body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.body::-webkit-scrollbar-thumb {
+  border: 3px solid var(--surface);
+  border-radius: 999px;
+  background: var(--line);
 }
 
 .modal-enter-active,
