@@ -5,8 +5,10 @@ import uuid
 from contextlib import asynccontextmanager
 from io import BytesIO
 from pathlib import Path
+from typing import Annotated
 
 from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, UploadFile
+from fastapi import Path as FPath
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from PIL import Image, ImageOps, UnidentifiedImageError
@@ -42,6 +44,9 @@ JPEG_QUALITY = 82
 HEX_COLOR = re.compile(r"^#[0-9a-fA-F]{6}$")
 ANIMATIONS = {"drop", "flip", "twirl", "rise", "pop", "none"}
 DEFAULT_ANIMATION = "drop"
+# keep in sync with frontend/src/lib/fonts.js
+FONTS = {"kalam", "caveat", "pacifico", "fredoka", "playfair", "typewriter"}
+DEFAULT_FONT = "kalam"
 
 
 @asynccontextmanager
@@ -142,35 +147,93 @@ async def save_upload(image: UploadFile, matte: str) -> str:
 
 
 def delete_image(filename: str) -> None:
-    # Never delete the seeded demo image, and never follow path components.
-    if not filename or filename == "demo.jpg" or Path(filename).name != filename:
+    # Never follow path components out of the images directory.
+    if not filename or Path(filename).name != filename:
         return
     path = IMAGES_DIR / filename
     if path.exists():
         path.unlink()
 
 
-def row_to_dict(row) -> dict:
-    created = row["date_created"]
+# ---------- public ids ----------
+
+# 16 random bytes = 128 bits -> 22 URL-safe characters. Not guessable, and changing a
+# few characters of a real link lands on an id that (practically) never exists.
+PUBLIC_ID_BYTES = 16
+PUBLIC_ID_PATTERN = r"^[A-Za-z0-9_-]{22}$"
+
+
+def new_public_id(conn) -> str:
+    while True:
+        candidate = secrets.token_urlsafe(PUBLIC_ID_BYTES)
+        if not conn.execute("SELECT 1 FROM sparklets WHERE public_id = ?", (candidate,)).fetchone():
+            return candidate
+
+
+def iso_utc(value: str | None) -> str | None:
     # SQLite CURRENT_TIMESTAMP is UTC without a zone; make that explicit for clients.
-    if created and "T" not in created and not created.endswith("Z"):
-        created = created.replace(" ", "T") + "Z"
-    rotation = row["card_rotation"]
+    if value and "T" not in value and not value.endswith("Z"):
+        return value.replace(" ", "T") + "Z"
+    return value
+
+
+def row_to_dict(row) -> dict:
+    # The internal numeric id is deliberately never returned.
     return {
-        "id": row["id"],
+        "public_id": row["public_id"],
         "image_filename": row["image_filename"],
         "to_name": row["to_name"],
         "from_name": row["from_name"],
         "message": row["message"],
-        "date_created": created,
         "background_color": row["background_color"],
         "card_color": row["card_color"],
         "text_color": row["text_color"],
-        "card_rotation": 5 if rotation is None else rotation,
+        "card_rotation": row["card_rotation"],
         "entry_animation": row["entry_animation"] or DEFAULT_ANIMATION,
-        "image_offset_x": row["image_offset_x"] or 0,
-        "image_offset_y": row["image_offset_y"] or 0,
-        "image_scale": row["image_scale"] or 1,
+        "font": row["font"] or DEFAULT_FONT,
+        "visibility": row["visibility"],
+        "created_at": iso_utc(row["created_at"]),
+        "updated_at": iso_utc(row["updated_at"]),
+    }
+
+
+def can_view(row) -> bool:
+    """Only 'public' exists today. 'restricted' will require a signed-in viewer who is
+    listed in sparklet_access once the user system lands."""
+    return row["visibility"] == "public"
+
+
+def fetch_by_public_id(conn, public_id: str):
+    row = conn.execute("SELECT * FROM sparklets WHERE public_id = ?", (public_id,)).fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="Sparklet not found")
+    return row
+
+
+PublicId = Annotated[str, FPath(pattern=PUBLIC_ID_PATTERN)]
+
+
+def sparklet_fields(
+    to_name: str = Form(...),
+    from_name: str = Form(...),
+    message: str = Form(...),
+    background_color: str = Form(default="#f0f0f0"),
+    card_color: str = Form(default="#ffffff"),
+    text_color: str = Form(default="#333333"),
+    card_rotation: int = Form(default=5),
+    entry_animation: str = Form(default=DEFAULT_ANIMATION),
+    font: str = Form(default=DEFAULT_FONT),
+) -> dict:
+    return {
+        "to_name": validate_text(to_name, "To", MAX_NAME_LENGTH),
+        "from_name": validate_text(from_name, "From", MAX_NAME_LENGTH),
+        "message": validate_text(message, "Message", MAX_MESSAGE_LENGTH),
+        "background_color": validate_color(background_color, "Background color"),
+        "card_color": validate_color(card_color, "Card color"),
+        "text_color": validate_color(text_color, "Text color"),
+        "card_rotation": max(-10, min(10, card_rotation)),
+        "entry_animation": validate_animation(entry_animation),
+        "font": font if font in FONTS else DEFAULT_FONT,
     }
 
 
@@ -194,128 +257,82 @@ async def admin_check():
 
 
 @app.get("/api/sparklets", dependencies=[Depends(require_admin)])
-async def get_all_sparklets():
+async def list_sparklets():
     with get_db() as conn:
-        rows = conn.execute("SELECT * FROM sparklets ORDER BY date_created DESC, id DESC").fetchall()
+        rows = conn.execute("SELECT * FROM sparklets ORDER BY created_at DESC, id DESC").fetchall()
         return [row_to_dict(row) for row in rows]
 
 
-@app.get("/api/sparklets/{sparklet_id}")
-async def get_sparklet(sparklet_id: int):
+@app.get("/api/sparklets/{public_id}")
+async def get_sparklet(public_id: PublicId):
     with get_db() as conn:
-        row = conn.execute("SELECT * FROM sparklets WHERE id = ?", (sparklet_id,)).fetchone()
-        if not row:
-            raise HTTPException(status_code=404, detail="Sparklet not found")
+        row = fetch_by_public_id(conn, public_id)
+        if not can_view(row):
+            raise HTTPException(status_code=403, detail="Sign in to view this sparklet")
         return row_to_dict(row)
 
 
-@app.post("/api/sparklets")
+@app.post("/api/sparklets", status_code=201)
 async def create_sparklet(
-    to_name: str = Form(...),
-    from_name: str = Form(...),
-    message: str = Form(...),
-    background_color: str = Form(default="#f0f0f0"),
-    card_color: str = Form(default="#ffffff"),
-    text_color: str = Form(default="#333333"),
-    card_rotation: int = Form(default=5),
-    entry_animation: str = Form(default=DEFAULT_ANIMATION),
+    fields: dict = Depends(sparklet_fields),
     image: UploadFile = File(...),
 ):
-    values = (
-        validate_text(to_name, "To", MAX_NAME_LENGTH),
-        validate_text(from_name, "From", MAX_NAME_LENGTH),
-        validate_text(message, "Message", MAX_MESSAGE_LENGTH),
-        validate_color(background_color, "Background color"),
-        validate_color(card_color, "Card color"),
-        validate_color(text_color, "Text color"),
-        max(-10, min(10, card_rotation)),
-        validate_animation(entry_animation),
-    )
-    image_filename = await save_upload(image, matte=values[4])
-
+    image_filename = await save_upload(image, matte=fields["card_color"])
     with get_db() as conn:
-        cursor = conn.execute(
+        public_id = new_public_id(conn)
+        conn.execute(
             """
             INSERT INTO sparklets
-            (to_name, from_name, message, background_color, card_color, text_color,
-             card_rotation, entry_animation, image_filename,
-             image_offset_x, image_offset_y, image_scale)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 1)
+            (public_id, to_name, from_name, message, image_filename, background_color,
+             card_color, text_color, card_rotation, entry_animation, font)
+            VALUES (:public_id, :to_name, :from_name, :message, :image_filename,
+                    :background_color, :card_color, :text_color, :card_rotation,
+                    :entry_animation, :font)
             """,
-            (*values, image_filename),
+            {**fields, "public_id": public_id, "image_filename": image_filename},
         )
         conn.commit()
-        sparklet_id = cursor.lastrowid
-
-    return {"id": sparklet_id, "message": "Sparklet created successfully"}
+    return {"public_id": public_id, "message": "Sparklet created successfully"}
 
 
-@app.put("/api/sparklets/{sparklet_id}", dependencies=[Depends(require_admin)])
+@app.put("/api/sparklets/{public_id}", dependencies=[Depends(require_admin)])
 async def update_sparklet(
-    sparklet_id: int,
-    to_name: str = Form(...),
-    from_name: str = Form(...),
-    message: str = Form(...),
-    background_color: str = Form(default="#f0f0f0"),
-    card_color: str = Form(default="#ffffff"),
-    text_color: str = Form(default="#333333"),
-    card_rotation: int = Form(default=5),
-    entry_animation: str = Form(default=DEFAULT_ANIMATION),
+    public_id: PublicId,
+    fields: dict = Depends(sparklet_fields),
     image: UploadFile | None = File(default=None),
 ):
-    values = (
-        validate_text(to_name, "To", MAX_NAME_LENGTH),
-        validate_text(from_name, "From", MAX_NAME_LENGTH),
-        validate_text(message, "Message", MAX_MESSAGE_LENGTH),
-        validate_color(background_color, "Background color"),
-        validate_color(card_color, "Card color"),
-        validate_color(text_color, "Text color"),
-        max(-10, min(10, card_rotation)),
-        validate_animation(entry_animation),
-    )
-
     with get_db() as conn:
-        row = conn.execute(
-            "SELECT image_filename FROM sparklets WHERE id = ?", (sparklet_id,)
-        ).fetchone()
-        if not row:
-            raise HTTPException(status_code=404, detail="Sparklet not found")
-
+        row = fetch_by_public_id(conn, public_id)
         image_filename = row["image_filename"]
         if image is not None and image.filename:
-            new_filename = await save_upload(image, matte=values[4])
+            new_filename = await save_upload(image, matte=fields["card_color"])
             delete_image(image_filename)
             image_filename = new_filename
 
         conn.execute(
             """
             UPDATE sparklets
-            SET to_name = ?, from_name = ?, message = ?,
-                background_color = ?, card_color = ?, text_color = ?,
-                card_rotation = ?, entry_animation = ?, image_filename = ?,
-                image_offset_x = 0, image_offset_y = 0, image_scale = 1
-            WHERE id = ?
+            SET to_name = :to_name, from_name = :from_name, message = :message,
+                background_color = :background_color, card_color = :card_color,
+                text_color = :text_color, card_rotation = :card_rotation,
+                entry_animation = :entry_animation, font = :font,
+                image_filename = :image_filename,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE public_id = :public_id
             """,
-            (*values, image_filename, sparklet_id),
+            {**fields, "image_filename": image_filename, "public_id": public_id},
         )
         conn.commit()
+    return {"public_id": public_id, "message": "Sparklet updated successfully"}
 
-    return {"id": sparklet_id, "message": "Sparklet updated successfully"}
 
-
-@app.delete("/api/sparklets/{sparklet_id}", dependencies=[Depends(require_admin)])
-async def delete_sparklet(sparklet_id: int):
+@app.delete("/api/sparklets/{public_id}", dependencies=[Depends(require_admin)])
+async def delete_sparklet(public_id: PublicId):
     with get_db() as conn:
-        row = conn.execute(
-            "SELECT image_filename FROM sparklets WHERE id = ?", (sparklet_id,)
-        ).fetchone()
-        if not row:
-            raise HTTPException(status_code=404, detail="Sparklet not found")
-
+        row = fetch_by_public_id(conn, public_id)
         delete_image(row["image_filename"])
-        conn.execute("DELETE FROM sparklets WHERE id = ?", (sparklet_id,))
+        conn.execute("DELETE FROM sparklets WHERE id = ?", (row["id"],))
         conn.commit()
-
     return {"message": "Sparklet deleted successfully"}
 
 

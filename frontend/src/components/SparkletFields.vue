@@ -83,6 +83,28 @@
       </details>
     </fieldset>
 
+    <fieldset class="field">
+      <legend class="field-label">
+        Font
+        <span class="field-hint">{{ fontById(model.font).name }}</span>
+      </legend>
+      <div class="fonts" role="radiogroup" aria-label="Message font">
+        <button
+          v-for="f in fonts"
+          :key="f.id"
+          type="button"
+          role="radio"
+          class="font-option"
+          :class="{ active: model.font === f.id }"
+          :aria-checked="model.font === f.id"
+          :style="{ fontFamily: f.family, fontStyle: f.italic ? 'italic' : 'normal', fontSize: `${1.15 * f.scale}rem` }"
+          @click="model.font = f.id"
+        >
+          {{ f.name }}
+        </button>
+      </div>
+    </fieldset>
+
     <label class="field">
       <span class="field-label">
         Tilt
@@ -105,6 +127,7 @@
 import { computed } from 'vue'
 import { themes, matchesTheme } from '../lib/themes'
 import { MAX_MESSAGE_LENGTH, MAX_NAME_LENGTH } from '../lib/limits'
+import { fonts, fontById } from '../lib/fonts'
 
 const model = defineModel({ type: Object, required: true })
 
@@ -136,6 +159,7 @@ fieldset {
 }
 
 legend {
+  width: 100%;
   margin-bottom: 0.4rem;
 }
 
@@ -146,11 +170,14 @@ legend {
 .swatches {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 0.5rem;
+  gap: 0.6rem 0.5rem;
 }
 
 .swatch {
+  width: 100%;
+  min-width: 0;
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 0.3rem;
   justify-items: center;
   padding: 0;
@@ -191,8 +218,13 @@ legend {
 }
 
 .swatch-name {
-  font-size: 0.72rem;
+  max-width: 100%;
+  font-size: 0.7rem;
   font-weight: 600;
+  line-height: 1.15;
+  text-align: center;
+  hyphens: auto;
+  overflow-wrap: break-word;
   color: var(--ink-2);
 }
 
@@ -202,6 +234,33 @@ legend {
 
 .custom {
   margin-top: 0.75rem;
+}
+
+.fonts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.font-option {
+  min-height: 52px;
+  padding: 0.25rem 0.5rem;
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--ink);
+  line-height: 1.1;
+  cursor: pointer;
+  transition: border-color 0.15s, background-color 0.15s;
+}
+
+.font-option:hover {
+  border-color: var(--ink-3);
+}
+
+.font-option.active {
+  border-color: var(--spark);
+  background: var(--spark-soft);
 }
 
 .custom summary {
@@ -302,14 +361,17 @@ legend {
   box-shadow: 0 0 0 2px var(--spark), 0 2px 6px rgba(0, 0, 0, 0.2);
 }
 
+@media (max-width: 480px) {
+  .swatches {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 420px) {
   .row-2 {
     grid-template-columns: 1fr;
   }
 
-  .swatches {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
 
   .color-row {
     grid-template-columns: 1fr;

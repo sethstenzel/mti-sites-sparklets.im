@@ -4,7 +4,10 @@
     :style="{
       '--card': cardColor,
       '--note-ink': textColor,
-      '--tilt': `${rotation}deg`
+      '--tilt': `${rotation}deg`,
+      '--note-font': fontDef.family,
+      '--note-scale': fontDef.scale,
+      '--note-style': fontDef.italic ? 'italic' : 'normal'
     }"
   >
     <div class="photo">
@@ -28,6 +31,7 @@
 <script setup>
 import { computed } from 'vue'
 import Icon from './Icon.vue'
+import { fontById } from '../lib/fonts'
 
 const props = defineProps({
   message: { type: String, default: '' },
@@ -37,10 +41,13 @@ const props = defineProps({
   textColor: { type: String, default: '#333333' },
   rotation: { type: Number, default: 0 },
   image: { type: String, default: '' },
+  font: { type: String, default: 'kalam' },
   messagePlaceholder: { type: String, default: '' },
   toPlaceholder: { type: String, default: '…' },
   fromPlaceholder: { type: String, default: '…' }
 })
+
+const fontDef = computed(() => fontById(props.font))
 
 const alt = computed(() => (props.fromName ? `Photo from ${props.fromName}` : 'Sparklet photo'))
 
@@ -111,7 +118,8 @@ const sizeClass = computed(() => {
   flex-direction: column;
   justify-content: space-between;
   padding-top: 2.6cqw;
-  font-family: var(--hand);
+  font-family: var(--note-font, var(--hand));
+  font-style: var(--note-style, normal);
   text-align: center;
 }
 
@@ -128,19 +136,19 @@ const sizeClass = computed(() => {
 }
 
 .message.is-short {
-  font-size: 6.4cqw;
+  font-size: calc(6.4cqw * var(--note-scale, 1));
 }
 
 .message.is-medium {
-  font-size: 5.2cqw;
+  font-size: calc(5.2cqw * var(--note-scale, 1));
 }
 
 .message.is-long {
-  font-size: 4.3cqw;
+  font-size: calc(4.3cqw * var(--note-scale, 1));
 }
 
 .message.is-xlong {
-  font-size: 3.8cqw;
+  font-size: calc(3.8cqw * var(--note-scale, 1));
   line-height: 1.14;
 }
 
@@ -149,7 +157,7 @@ const sizeClass = computed(() => {
   justify-content: space-between;
   gap: 5cqw;
   padding-top: 1.2cqw;
-  font-size: 3.4cqw;
+  font-size: calc(3.4cqw * var(--note-scale, 1));
   font-weight: 700;
   line-height: 1.2;
   opacity: 0.82;

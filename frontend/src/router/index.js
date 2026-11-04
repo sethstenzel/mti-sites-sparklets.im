@@ -9,12 +9,18 @@ const routes = [
     component: () => import('../views/CreateSparklet.vue'),
     meta: { title: 'Create a sparklet' }
   },
-  { path: '/sparklet', redirect: '/create' },
   {
-    path: '/sparklet/:id(\\d+)',
+    // public ids are 22-char random tokens; anything else falls through to NotFound
+    path: '/s/:token([A-Za-z0-9_-]{22})',
     name: 'ViewSparklet',
     component: () => import('../views/ViewSparklet.vue'),
-    meta: { title: 'A sparklet for you', immersive: true }
+    meta: { title: 'A sparklet for you' }
+  },
+  {
+    path: '/example',
+    name: 'Example',
+    component: () => import('../views/ViewSparklet.vue'),
+    meta: { title: 'Example sparklet', example: true }
   },
   {
     path: '/manage',

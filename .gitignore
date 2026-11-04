@@ -20,6 +20,8 @@ downloads/
 eggs/
 .eggs/
 lib/
+# ...but the frontend keeps its shared JS modules in src/lib
+!frontend/src/lib/
 lib64/
 parts/
 sdist/

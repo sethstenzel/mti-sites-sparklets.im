@@ -46,16 +46,16 @@ STAGE="$(mktemp -d)"
 tar -C "$STAGE" -xzf "$REL"
 
 # backups: database + current code
-cp backend/sparklets.sqlite "backups/sparklets-$STAMP.sqlite"
+[ -f backend/sparklets.sqlite ] && cp backend/sparklets.sqlite "backups/sparklets-$STAMP.sqlite"
 tar -czf "backups/code-$STAMP.tgz" backend/*.py backend/pyproject.toml frontend/dist 2>/dev/null || true
 
 # backend code
 cp "$STAGE"/backend/* backend/
 
-# frontend: copy new build over the old one, keeping old hashed assets
-mkdir -p frontend/dist/assets
-cp -r "$STAGE"/frontend/dist/assets/. frontend/dist/assets/
-find "$STAGE/frontend/dist" -maxdepth 1 -type f -exec cp {} frontend/dist/ \;
+# frontend: copy the new build (all files and folders) over the old one;
+# old hashed assets are kept so browsers holding a cached index.html keep working
+mkdir -p frontend/dist
+cp -r "$STAGE"/frontend/dist/. frontend/dist/
 
 # admin token for /manage
 if [ ! -f backend/.env ] || ! grep -q '^ADMIN_TOKEN=' backend/.env; then

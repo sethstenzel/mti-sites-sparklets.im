@@ -44,8 +44,8 @@
       </div>
 
       <div v-else class="grid">
-        <article v-for="s in filtered" :key="s.id" class="tile">
-          <router-link :to="`/sparklet/${s.id}`" class="thumb" :style="{ background: s.background_color }" :aria-label="`Open sparklet ${s.id}`">
+        <article v-for="s in filtered" :key="s.public_id" class="tile">
+          <router-link :to="sparkletPath(s.public_id)" class="thumb" :style="{ background: s.background_color }" :aria-label="`Open the sparklet from ${s.from_name} to ${s.to_name}`">
             <div class="thumb-card">
               <SparkletCard
                 :message="s.message"
@@ -54,6 +54,7 @@
                 :card-color="s.card_color"
                 :text-color="s.text_color"
                 :rotation="s.card_rotation"
+                :font="s.font"
                 :image="imageUrl(s.image_filename)"
                
               />
@@ -66,8 +67,8 @@
               <strong>{{ s.to_name }}</strong>
             </div>
             <p class="sub">
-              <span>#{{ s.id }}</span>
-              <time :datetime="s.date_created" :title="fullDate(s.date_created)">{{ timeAgo(s.date_created) }}</time>
+              <time :datetime="s.created_at" :title="fullDate(s.created_at)">{{ timeAgo(s.created_at) }}</time>
+              <span class="anim">{{ s.visibility === 'public' ? 'Public link' : 'Restricted' }}</span>
               <span class="anim">{{ animationName(s.entry_animation) }}</span>
             </p>
             <div class="tile-actions">
@@ -80,7 +81,7 @@
     </template>
 
     <!-- edit -->
-    <Modal :open="!!editing" :title="editing ? `Edit sparklet #${editing.id}` : ''" size="lg" @close="closeEdit">
+    <Modal :open="!!editing" :title="editing ? `Edit sparklet for ${editing.to_name}` : ''" size="lg" @close="closeEdit">
       <form v-if="editing" class="edit" @submit.prevent="saveEdit">
         <div class="edit-preview" :style="{ background: editData.background_color }">
           <div class="edit-card">
@@ -92,6 +93,7 @@
                 :card-color="editData.card_color"
                 :text-color="editData.text_color"
                 :rotation="editData.card_rotation"
+                :font="editData.font"
               >
                 <template #photo>
                   <ImageCropper
@@ -160,6 +162,7 @@ import {
   getAdminToken,
   imageUrl,
   parseDate,
+  sparkletPath,
   setAdminToken,
   timeAgo
 } from '../lib/api'
@@ -192,7 +195,7 @@ const filtered = computed(() => {
   const q = query.value.trim().toLowerCase()
   if (!q) return sparklets.value
   return sparklets.value.filter((s) =>
-    [s.to_name, s.from_name, s.message, String(s.id)].some((v) => v?.toLowerCase().includes(q))
+    [s.to_name, s.from_name, s.message, s.public_id].some((v) => v?.toLowerCase().includes(q))
   )
 })
 
@@ -261,7 +264,8 @@ const openEdit = (s) => {
     card_color: s.card_color,
     text_color: s.text_color,
     card_rotation: s.card_rotation ?? 5,
-    entry_animation: s.entry_animation || 'drop'
+    entry_animation: s.entry_animation || 'drop',
+    font: s.font || 'kalam'
   }
   clearEditImage()
   editError.value = ''
@@ -288,7 +292,7 @@ const saveEdit = async () => {
   editError.value = ''
   try {
     const file = editImagePreview.value ? await editCropper.value.getCroppedFile() : null
-    await api.put(`/api/sparklets/${editing.value.id}`, buildSparkletForm(d, file), { headers: adminHeaders() })
+    await api.put(`/api/sparklets/${editing.value.public_id}`, buildSparkletForm(d, file), { headers: adminHeaders() })
     toast('Changes saved', { tone: 'ok' })
     closeEdit()
     await loadSparklets()
@@ -304,8 +308,8 @@ const deleteSparklet = async () => {
   deleting.value = true
   const target = toDelete.value
   try {
-    await api.delete(`/api/sparklets/${target.id}`, { headers: adminHeaders() })
-    sparklets.value = sparklets.value.filter((s) => s.id !== target.id)
+    await api.delete(`/api/sparklets/${target.public_id}`, { headers: adminHeaders() })
+    sparklets.value = sparklets.value.filter((s) => s.public_id !== target.public_id)
     toast('Sparklet deleted', { tone: 'ok' })
     toDelete.value = null
   } catch (err) {

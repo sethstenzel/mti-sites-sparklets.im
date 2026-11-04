@@ -9,7 +9,7 @@
         </p>
         <div class="cta">
           <router-link to="/create" class="btn btn-primary btn-lg"><Icon name="plus" /> Create a sparklet</router-link>
-          <router-link to="/sparklet/1" class="btn btn-ghost btn-lg">See an example</router-link>
+          <router-link to="/example" class="btn btn-ghost btn-lg">See an example</router-link>
         </div>
       </div>
 
@@ -23,9 +23,9 @@
               :card-color="s.theme.card_color"
               :text-color="s.theme.text_color"
               :rotation="s.rotation"
-            >
-              <template #photo><div class="scene" :class="s.scene"></div></template>
-            </SparkletCard>
+              :image="s.image"
+              :font="s.font"
+            />
           </SparkletStage>
         </div>
       </div>
@@ -75,15 +75,14 @@
         <div class="play-card">
           <SparkletStage :animation="demoAnimation" :play-key="playKey" :burst-color="demoTheme.background_color">
             <SparkletCard
-              message="You’re my favorite person to get lost with."
-              to-name="Robin"
-              from-name="Kai"
+              message="Every sunrise is better with you in it. Coffee this weekend?"
+              to-name="Mia"
+              from-name="Jordan"
               :card-color="demoTheme.card_color"
               :text-color="demoTheme.text_color"
               :rotation="-4"
-            >
-              <template #photo><div class="scene scene-night"></div></template>
-            </SparkletCard>
+              image="/example.jpg"
+            />
           </SparkletStage>
         </div>
       </div>
@@ -101,44 +100,45 @@ import { ref } from 'vue'
 import Icon from '../components/Icon.vue'
 import SparkletCard from '../components/SparkletCard.vue'
 import SparkletStage from '../components/SparkletStage.vue'
-import { themes } from '../lib/themes'
 import { animations } from '../lib/animations'
 
-const byName = (name) => themes.find((t) => t.name === name)
-
+// Demo cards use illustrated photos from /public/demo so they never depend on the database.
 const samples = [
   {
-    to: 'Grandpa',
-    from: 'Leo',
-    message: 'I scored my first goal today!!',
-    theme: byName('Sky'),
+    to: 'Robin',
+    from: 'Kai',
+    message: 'Look up tonight. Same moon, same sky. Miss you already 🌙',
+    theme: { card_color: '#2b2858', text_color: '#f5e9c8' },
     rotation: -7,
-    scene: 'scene-field',
+    image: '/demo/moonlit-lake.jpg',
+    font: 'playfair',
     animation: 'rise'
   },
   {
     to: 'Mom',
     from: 'Jess',
     message: 'Thanks for every lunchbox note. Here’s one back ♥',
-    theme: byName('Bubblegum'),
+    theme: { card_color: '#fff6ec', text_color: '#7a2e12' },
     rotation: 5,
-    scene: 'scene-sunset',
+    image: '/demo/tropical-sunset.jpg',
+    font: 'caveat',
     animation: 'drop'
   },
   {
     to: 'Sam',
     from: 'Priya',
-    message: 'Happy 30th! Dinner’s on me.',
-    theme: byName('Classic'),
+    message: 'Happy 30th! Let’s go somewhere new. Dinner’s on me 🎈',
+    theme: { card_color: '#ffffff', text_color: '#1d3a6b' },
     rotation: -2,
-    scene: 'scene-beach',
+    image: '/demo/balloon-hills.jpg',
+    font: 'fredoka',
     animation: 'pop'
   }
 ]
 
 const demoAnimation = ref('flip')
 const playKey = ref(0)
-const demoTheme = byName('Midnight')
+const demoTheme = { background_color: '#f3e3f1', card_color: '#fffaf5', text_color: '#4b3f6b' }
 
 const play = (id) => {
   demoAnimation.value = id
@@ -239,43 +239,6 @@ h1 {
   animation-duration: 5.5s;
 }
 
-/* little CSS "photos" so the samples never depend on uploaded files */
-.scene {
-  width: 100%;
-  height: 100%;
-}
-
-.scene-sunset {
-  background:
-    radial-gradient(circle at 62% 62%, #fff3b0 0 9%, #ffd36b 10% 13%, transparent 14%),
-    radial-gradient(120% 60% at 20% 100%, #7b3d6b 0 45%, transparent 46%),
-    radial-gradient(120% 55% at 90% 105%, #5a2a55 0 48%, transparent 49%),
-    linear-gradient(180deg, #ff9a6b 0%, #ff6f91 55%, #c45ba0 100%);
-}
-
-.scene-field {
-  background:
-    radial-gradient(circle at 70% 58%, #ffffff 0 4.5%, #222 4.6% 5%, transparent 5.1%),
-    radial-gradient(160% 70% at 50% 120%, #3fae5e 0 55%, transparent 56%),
-    linear-gradient(180deg, #8fd0ff 0%, #c7ecff 70%, #3fae5e 70%);
-}
-
-.scene-beach {
-  background:
-    radial-gradient(circle at 24% 30%, #fff5c2 0 8%, transparent 9%),
-    linear-gradient(180deg, #7fd3f0 0 55%, #2b9bc9 55% 72%, #f6dca6 72%);
-}
-
-.scene-night {
-  background:
-    radial-gradient(circle at 78% 26%, #fff8d6 0 7%, transparent 8%),
-    radial-gradient(1.5px 1.5px at 20% 30%, #fff 50%, transparent 51%),
-    radial-gradient(1.5px 1.5px at 40% 15%, #fff 50%, transparent 51%),
-    radial-gradient(2px 2px at 58% 40%, #fff 50%, transparent 51%),
-    radial-gradient(1.5px 1.5px at 12% 55%, #fff 50%, transparent 51%),
-    radial-gradient(140% 60% at 30% 110%, #1b1840 0 50%, transparent 51%),
-    linear-gradient(180deg, #2c2a6b 0%, #5b3f8f 100%);
-}
 
 /* ---------- steps ---------- */
 

@@ -32,12 +32,12 @@
           <h1>Your sparklet is ready</h1>
           <p>Send {{ form.to_name }} the link, or save the QR card to print.</p>
         </header>
-        <SharePanel :url="shareUrl" :to-name="form.to_name" :from-name="form.from_name" :id="createdId" />
+        <SharePanel :url="shareUrl" :to-name="form.to_name" :from-name="form.from_name" :id="createdId" :background-color="form.background_color" />
         <div class="after">
           <button type="button" class="btn btn-ghost" @click="startOver">
             <Icon name="plus" /> Make another
           </button>
-          <router-link :to="`/sparklet/${createdId}`" class="btn btn-ghost">
+          <router-link :to="sparkletPath(createdId)" class="btn btn-ghost">
             <Icon name="eye" /> View it
           </router-link>
         </div>
@@ -60,6 +60,7 @@
             :card-color="form.card_color"
             :text-color="form.text_color"
             :rotation="form.card_rotation"
+            :font="form.font"
             message-placeholder="Your message shows up here"
             to-placeholder="them"
             from-placeholder="you"
@@ -96,9 +97,10 @@ import AnimationPicker from '../components/AnimationPicker.vue'
 import ImageCropper from '../components/ImageCropper.vue'
 import PhotoDrop from '../components/PhotoDrop.vue'
 import SharePanel from '../components/SharePanel.vue'
-import { api, buildSparkletForm, errorMessage, shareUrlFor } from '../lib/api'
+import { api, buildSparkletForm, errorMessage, shareUrlFor, sparkletPath } from '../lib/api'
 import { defaultTheme, contrastInk } from '../lib/themes'
 import { defaultAnimation } from '../lib/animations'
+import { defaultFont } from '../lib/fonts'
 
 const blankForm = () => ({
   to_name: '',
@@ -108,7 +110,8 @@ const blankForm = () => ({
   card_color: defaultTheme.card_color,
   text_color: defaultTheme.text_color,
   card_rotation: 5,
-  entry_animation: defaultAnimation
+  entry_animation: defaultAnimation,
+  font: defaultFont
 })
 
 const form = ref(blankForm())
@@ -158,7 +161,7 @@ const handleSubmit = async () => {
     const cropped = await cropper.value.getCroppedFile()
     const { data } = await api.post('/api/sparklets', buildSparkletForm(form.value, cropped))
     croppedPreview.value = URL.createObjectURL(cropped)
-    createdId.value = data.id
+    createdId.value = data.public_id
     window.scrollTo({ top: 0, behavior: 'smooth' })
   } catch (err) {
     error.value = errorMessage(err, 'Couldn’t create the sparklet. Try again in a moment.')

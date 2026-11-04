@@ -25,7 +25,8 @@
           <strong>{{ sparklet.from_name }}</strong>
           <span>sent {{ sparklet.to_name }} a sparklet</span>
         </p>
-        <time :datetime="sparklet.date_created">{{ timeAgo(sparklet.date_created) }}</time>
+        <span v-if="isExample" class="badge">Example</span>
+        <time v-else :datetime="sparklet.created_at">{{ timeAgo(sparklet.created_at) }}</time>
       </header>
 
       <div class="card-slot">
@@ -37,7 +38,8 @@
             :card-color="sparklet.card_color"
             :text-color="sparklet.text_color"
             :rotation="sparklet.card_rotation"
-            :image="imageUrl(sparklet.image_filename)"
+            :font="sparklet.font"
+            :image="photo"
           />
         </SparkletStage>
       </div>
@@ -64,7 +66,8 @@
         :url="url"
         :to-name="sparklet.to_name"
         :from-name="sparklet.from_name"
-        :id="sparklet.id"
+        :id="sparklet.public_id"
+        :background-color="sparklet.background_color"
       />
     </Modal>
   </div>
@@ -73,6 +76,7 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
+import { EXAMPLE_SPARKLET } from '../lib/example'
 import Icon from '../components/Icon.vue'
 import Modal from '../components/Modal.vue'
 import SharePanel from '../components/SharePanel.vue'
@@ -90,7 +94,12 @@ const errorText = ref('')
 const playKey = ref(0)
 const shareOpen = ref(false)
 
-const url = computed(() => (sparklet.value ? shareUrlFor(sparklet.value.id) : ''))
+const isExample = computed(() => !!route.meta.example)
+const url = computed(() => {
+  if (!sparklet.value) return ''
+  return isExample.value ? `${window.location.origin}/example` : shareUrlFor(sparklet.value.public_id)
+})
+const photo = computed(() => sparklet.value?.image || imageUrl(sparklet.value?.image_filename))
 const initial = computed(() => (sparklet.value?.from_name || '?').trim().charAt(0).toUpperCase())
 const tone = computed(() => `on-${contrastInk(sparklet.value?.background_color)}`)
 
@@ -109,8 +118,10 @@ const load = async () => {
   state.value = 'loading'
   notFound.value = false
   try {
-    const { data } = await api.get(`/api/sparklets/${route.params.id}`)
-    await preload(imageUrl(data.image_filename))
+    const data = isExample.value
+      ? EXAMPLE_SPARKLET
+      : (await api.get(`/api/sparklets/${route.params.token}`)).data
+    await preload(data.image || imageUrl(data.image_filename))
     sparklet.value = data
     document.title = `A sparklet for ${data.to_name} · Sparklets`
     state.value = 'ready'
@@ -122,7 +133,7 @@ const load = async () => {
   }
 }
 
-watch(() => route.params.id, (id) => id && load(), { immediate: true })
+watch(() => [route.params.token, route.meta.example], () => (route.params.token || route.meta.example) && load(), { immediate: true })
 </script>
 
 <style scoped>
@@ -278,6 +289,15 @@ watch(() => route.params.id, (id) => id && load(), { immediate: true })
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.badge {
+  flex: none;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  background: rgba(127, 127, 127, 0.18);
+  font-size: 0.75rem;
+  font-weight: 700;
 }
 
 time {

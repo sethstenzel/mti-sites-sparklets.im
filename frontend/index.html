@@ -5,14 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Sparklets.im</title>
     <meta name="description" content="Make a little photo note and share it with a link or a QR code.">
-    <meta name="theme-color" content="#fbf7fb">
+    <meta name="theme-color" content="#fbf9fa">
     <script>
       // Apply the saved site theme before first paint (no flash of the wrong colors).
       (function () {
-        var themes = { neutral: '#fafafa', blush: '#fbf7fb', slate: '#0e1318' };
+        var themes = { neutral: '#fbf9fa', blush: '#fbf7fb', slate: '#0e1318' };
         var id = null;
         try { id = localStorage.getItem('sparklets.siteTheme'); } catch (e) {}
-        if (!themes[id]) id = window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'slate' : 'blush';
+        if (!themes[id]) id = 'neutral';
         document.documentElement.setAttribute('data-theme', id);
         document.querySelector('meta[name="theme-color"]').setAttribute('content', themes[id]);
       })();
@@ -23,7 +23,7 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Kalam:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Caveat:wght@500;700&family=Fredoka:wght@500;600&family=Kalam:wght@400;700&family=Pacifico&family=Playfair+Display:ital,wght@1,500;1,700&family=Special+Elite&display=swap" rel="stylesheet">
   </head>
   <body>
     <div id="app"></div>

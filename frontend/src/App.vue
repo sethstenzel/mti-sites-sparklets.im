@@ -8,7 +8,7 @@
       </router-link>
       <nav class="topnav" aria-label="Main">
         <router-link to="/" class="navlink" exact-active-class="active">Home</router-link>
-        <router-link to="/sparklet/1" class="navlink" active-class="active">Example</router-link>
+        <router-link to="/example" class="navlink" active-class="active">Example</router-link>
       </nav>
       <div class="topbar-actions">
         <router-link to="/create" class="btn btn-primary btn-sm create-btn">
@@ -30,7 +30,7 @@
     <router-link to="/create" class="tab tab-create" active-class="active" aria-label="Create">
       <span class="tab-plus"><Icon name="plus" /></span>
     </router-link>
-    <router-link to="/sparklet/1" class="tab" active-class="active">
+    <router-link to="/example" class="tab" active-class="active">
       <Icon name="eye" /><span>Example</span>
     </router-link>
   </nav>
