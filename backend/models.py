@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 class SparkletCreate(BaseModel):
     to_name: str = Field(..., max_length=30)
     from_name: str = Field(..., max_length=30)
-    message: str = Field(..., max_length=138)
+    message: str = Field(..., max_length=140)
     background_color: str = Field(default="#f0f0f0")
     card_color: str = Field(default="#ffffff")
     text_color: str = Field(default="#333333")
