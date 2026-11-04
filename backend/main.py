@@ -1,7 +1,8 @@
+import hashlib
+import hmac
 import os
 import re
 import secrets
-import uuid
 from contextlib import asynccontextmanager
 from io import BytesIO
 from pathlib import Path
@@ -36,6 +37,8 @@ _load_dotenv(BASE_DIR / ".env")
 
 ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:18003").split(",")
 ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", "")
+# Secret key for image file names (see image_name_for). Changing it only affects new uploads.
+IMAGE_HASH_KEY = os.getenv("IMAGE_HASH_KEY", "").encode()
 
 MAX_NAME_LENGTH = 20
 MAX_MESSAGE_LENGTH = 140
@@ -139,16 +142,38 @@ def process_image(data: bytes, matte: str = "#ffffff", max_width: int = MAX_IMAG
     return output.getvalue()
 
 
+def image_name_for(data: bytes) -> str:
+    """Content-addressed file name: identical stored images share one file.
+
+    Keyed with IMAGE_HASH_KEY (HMAC) so names can't be computed by someone who merely
+    has a copy of a photo, which keeps image URLs unguessable.
+    """
+    if IMAGE_HASH_KEY:
+        digest = hmac.new(IMAGE_HASH_KEY, data, hashlib.sha256).hexdigest()
+    else:
+        digest = hashlib.sha256(data).hexdigest()
+    return f"{digest[:40]}.jpg"  # 160 bits
+
+
 async def save_upload(image: UploadFile, matte: str) -> str:
+    """Process an upload and store it once; returns the (possibly existing) file name."""
     processed = process_image(await image.read(), matte)
-    filename = f"{uuid.uuid4().hex}.jpg"
-    (IMAGES_DIR / filename).write_bytes(processed)
+    filename = image_name_for(processed)
+    path = IMAGES_DIR / filename
+    if not path.exists():
+        # write-then-rename so concurrent identical uploads never see a partial file
+        tmp = IMAGES_DIR / f".{filename}.{secrets.token_hex(4)}.tmp"
+        tmp.write_bytes(processed)
+        os.replace(tmp, path)
     return filename
 
 
-def delete_image(filename: str) -> None:
+def release_image(conn, filename: str) -> None:
+    """Delete an image file once no sparklet references it any more."""
     # Never follow path components out of the images directory.
     if not filename or Path(filename).name != filename:
+        return
+    if conn.execute("SELECT 1 FROM sparklets WHERE image_filename = ? LIMIT 1", (filename,)).fetchone():
         return
     path = IMAGES_DIR / filename
     if path.exists():
@@ -303,11 +328,10 @@ async def update_sparklet(
 ):
     with get_db() as conn:
         row = fetch_by_public_id(conn, public_id)
-        image_filename = row["image_filename"]
+        old_filename = row["image_filename"]
+        image_filename = old_filename
         if image is not None and image.filename:
-            new_filename = await save_upload(image, matte=fields["card_color"])
-            delete_image(image_filename)
-            image_filename = new_filename
+            image_filename = await save_upload(image, matte=fields["card_color"])
 
         conn.execute(
             """
@@ -323,6 +347,8 @@ async def update_sparklet(
             {**fields, "image_filename": image_filename, "public_id": public_id},
         )
         conn.commit()
+        if image_filename != old_filename:
+            release_image(conn, old_filename)
     return {"public_id": public_id, "message": "Sparklet updated successfully"}
 
 
@@ -330,9 +356,9 @@ async def update_sparklet(
 async def delete_sparklet(public_id: PublicId):
     with get_db() as conn:
         row = fetch_by_public_id(conn, public_id)
-        delete_image(row["image_filename"])
         conn.execute("DELETE FROM sparklets WHERE id = ?", (row["id"],))
         conn.commit()
+        release_image(conn, row["image_filename"])
     return {"message": "Sparklet deleted successfully"}
 
 

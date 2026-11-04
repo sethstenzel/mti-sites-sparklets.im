@@ -33,6 +33,8 @@ CREATE TABLE IF NOT EXISTS sparklets (
 
 CREATE INDEX IF NOT EXISTS idx_sparklets_owner ON sparklets(owner_user_id);
 CREATE INDEX IF NOT EXISTS idx_sparklets_created ON sparklets(created_at);
+-- images are content-addressed and shared; deletes check for other references
+CREATE INDEX IF NOT EXISTS idx_sparklets_image ON sparklets(image_filename);
 
 -- Who a restricted sparklet is shared with. A grant targets an account (user_id)
 -- or, before that person has signed up, an invited email address.

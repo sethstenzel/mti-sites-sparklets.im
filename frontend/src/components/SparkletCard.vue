@@ -21,8 +21,8 @@
     <figcaption class="note">
       <p class="message" :class="sizeClass">{{ message || messagePlaceholder }}</p>
       <p class="signature">
-        <span>To {{ toName || toPlaceholder }}</span>
-        <span>From {{ fromName || fromPlaceholder }}</span>
+        <span>To: {{ toName || toPlaceholder }}</span>
+        <span>From: {{ fromName || fromPlaceholder }}</span>
       </p>
     </figcaption>
   </figure>

@@ -57,12 +57,14 @@ cp "$STAGE"/backend/* backend/
 mkdir -p frontend/dist
 cp -r "$STAGE"/frontend/dist/. frontend/dist/
 
-# admin token for /manage
-if [ ! -f backend/.env ] || ! grep -q '^ADMIN_TOKEN=' backend/.env; then
-  echo "ADMIN_TOKEN=$(head -c 24 /dev/urandom | base64 | tr -d '/+=' | head -c 32)" >> backend/.env
-  chmod 600 backend/.env
-  echo "Generated a new ADMIN_TOKEN in $APP_DIR/backend/.env"
-fi
+# secrets in backend/.env: admin token for /manage, key for image file names
+for KEY in ADMIN_TOKEN IMAGE_HASH_KEY; do
+  if [ ! -f backend/.env ] || ! grep -q "^$KEY=" backend/.env; then
+    echo "$KEY=$(head -c 32 /dev/urandom | base64 | tr -d '/+=' | head -c 40)" >> backend/.env
+    chmod 600 backend/.env
+    echo "Generated a new $KEY in $APP_DIR/backend/.env"
+  fi
+done
 
 # dependencies
 (cd backend && "$HOME/.local/bin/uv" sync --frozen --no-dev 2>&1 | tail -3)
