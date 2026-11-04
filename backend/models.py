@@ -3,8 +3,8 @@ from pydantic import BaseModel, Field
 
 
 class SparkletCreate(BaseModel):
-    to_name: str = Field(..., max_length=30)
-    from_name: str = Field(..., max_length=30)
+    to_name: str = Field(..., max_length=20)
+    from_name: str = Field(..., max_length=20)
     message: str = Field(..., max_length=140)
     background_color: str = Field(default="#f0f0f0")
     card_color: str = Field(default="#ffffff")

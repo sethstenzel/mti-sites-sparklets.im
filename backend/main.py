@@ -35,7 +35,7 @@ _load_dotenv(BASE_DIR / ".env")
 ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:18003").split(",")
 ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", "")
 
-MAX_NAME_LENGTH = 30
+MAX_NAME_LENGTH = 20
 MAX_MESSAGE_LENGTH = 140
 MAX_IMAGE_WIDTH = 1000  # 2x the largest card the site renders
 JPEG_QUALITY = 82
