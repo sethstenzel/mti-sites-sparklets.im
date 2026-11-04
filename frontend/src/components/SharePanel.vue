@@ -37,6 +37,28 @@
           <Icon v-else name="qr" class="plain-icon" />
         </button>
       </div>
+
+      <div class="qr-options">
+        <label class="toggle">
+          <input v-model="matchColors" type="checkbox" />
+          <span class="toggle-ui" aria-hidden="true"></span>
+          <span class="toggle-text">
+            <strong>Match colors</strong>
+            <span>Code in the shape color on the background color</span>
+          </span>
+        </label>
+        <label class="toggle">
+          <input v-model="diamond" type="checkbox" />
+          <span class="toggle-ui" aria-hidden="true"></span>
+          <span class="toggle-text">
+            <strong>Diamond</strong>
+            <span>Turn the code 45°</span>
+          </span>
+        </label>
+      </div>
+      <p v-if="matchColors && palette.swapped" class="qr-note">
+        On dark backgrounds the code is drawn dark-on-light so every phone can scan it.
+      </p>
     </fieldset>
 
     <div class="link-row">
@@ -69,7 +91,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import Icon from './Icon.vue'
 import { copyText, toast } from '../lib/toast'
 import { qrShapes, renderShapedQr } from '../lib/qrShapes'
-import { contrastInk, tonesOf } from '../lib/themes'
+import { contrastInk, matchedQrColors, tonesOf } from '../lib/themes'
 
 const props = defineProps({
   url: { type: String, required: true },
@@ -83,6 +105,8 @@ const props = defineProps({
 const linkId = `link-${Math.random().toString(36).slice(2, 8)}`
 const qrDataUrl = ref('')
 const shapeId = ref('heart')
+const matchColors = ref(false)
+const diamond = ref(false)
 const canShare = typeof navigator !== 'undefined' && !!navigator.share
 
 const currentShape = computed(() => qrShapes.find((s) => s.id === shapeId.value) || qrShapes[0])
@@ -99,8 +123,22 @@ const shapeColor = computed(() => {
 
 const tileBackground = computed(() => props.backgroundColor || 'var(--surface-2)')
 
+// Shape, code and plate colors for the current options.
+const palette = computed(() => {
+  if (matchColors.value && props.backgroundColor) return matchedQrColors(props.backgroundColor)
+  if (matchColors.value) return { shape: shapeColor.value, ink: shapeColor.value, paper: '#ffffff', swapped: false }
+  return { shape: shapeColor.value, ink: '#1d1a2b', paper: '#ffffff', swapped: false }
+})
+
 const shapedCanvas = (size) =>
-  renderShapedQr(props.url, { shapeId: shapeId.value, color: shapeColor.value, size })
+  renderShapedQr(props.url, {
+    shapeId: shapeId.value,
+    color: palette.value.shape,
+    ink: palette.value.ink,
+    paper: palette.value.paper,
+    diamond: diamond.value,
+    size
+  })
 
 const render = () => {
   try {
@@ -112,7 +150,7 @@ const render = () => {
 }
 
 onMounted(render)
-watch(() => [props.url, shapeId.value, shapeColor.value], render)
+watch(() => [props.url, shapeId.value, palette.value, diamond.value], render)
 
 const save = (canvas, name) => {
   const link = document.createElement('a')
@@ -121,7 +159,8 @@ const save = (canvas, name) => {
   link.click()
 }
 
-const fileBase = () => `sparklet-${String(props.id || 'qr').slice(0, 8)}-${shapeId.value}`
+const fileBase = () =>
+  `sparklet-${String(props.id || 'qr').slice(0, 8)}-${shapeId.value}${diamond.value ? '-diamond' : ''}${matchColors.value ? '-matched' : ''}`
 
 const downloadImage = () => {
   try {
@@ -267,6 +306,99 @@ legend {
   fill: none;
 }
 
+.qr-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.toggle {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.6rem 0.7rem;
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  cursor: pointer;
+  transition: border-color 0.15s, background-color 0.15s;
+}
+
+.toggle:hover {
+  border-color: var(--ink-3);
+}
+
+.toggle:has(input:checked) {
+  border-color: var(--spark);
+  background: var(--spark-soft);
+}
+
+.toggle input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.toggle-ui {
+  position: relative;
+  width: 34px;
+  height: 20px;
+  flex: none;
+  border-radius: 999px;
+  background: var(--line);
+  transition: background-color 0.15s;
+}
+
+.toggle-ui::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  transition: transform 0.15s;
+}
+
+.toggle input:checked + .toggle-ui {
+  background: var(--spark);
+}
+
+.toggle input:checked + .toggle-ui::after {
+  transform: translateX(14px);
+}
+
+.toggle input:focus-visible + .toggle-ui {
+  outline: 3px solid color-mix(in srgb, var(--spark) 60%, transparent);
+  outline-offset: 2px;
+}
+
+.toggle-text {
+  display: grid;
+  min-width: 0;
+  line-height: 1.2;
+}
+
+.toggle-text strong {
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.toggle-text span {
+  font-size: 0.75rem;
+  color: var(--ink-2);
+}
+
+.qr-note {
+  margin-top: 0.5rem;
+  font-size: 0.8rem;
+  color: var(--ink-2);
+}
+
 .link-row {
   display: flex;
   gap: 0.5rem;
@@ -289,6 +421,10 @@ legend {
 }
 
 @media (max-width: 400px) {
+  .qr-options {
+    grid-template-columns: 1fr;
+  }
+
   .shape-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }

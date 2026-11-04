@@ -66,6 +66,17 @@ const toHsl = (hex) => {
   return [h * 60, s * 100, l * 100]
 }
 
+const hslToHex = (h, s, l) => {
+  s /= 100
+  l /= 100
+  const f = (n) => {
+    const k = (n + h / 30) % 12
+    const c = l - s * Math.min(l, 1 - l) * Math.max(-1, Math.min(k - 3, 9 - k, 1))
+    return Math.round(c * 255).toString(16).padStart(2, '0')
+  }
+  return `#${f(0)}${f(8)}${f(4)}`
+}
+
 /**
  * Two visible tones of a background color (same hue, richer saturation) for decorations
  * drawn on top of it: deeper tones on light backgrounds, brighter tones on dark ones.
@@ -74,5 +85,51 @@ export const tonesOf = (hex) => {
   const [h, s] = toHsl(hex)
   const sat = s < 8 ? s : Math.max(s, 65)
   const [l1, l2] = contrastInk(hex) === 'light' ? [58, 44] : [72, 84]
-  return [`hsl(${h.toFixed(0)} ${sat.toFixed(0)}% ${l1}%)`, `hsl(${h.toFixed(0)} ${sat.toFixed(0)}% ${l2}%)`]
+  return [hslToHex(h, sat, l1), hslToHex(h, sat, l2)]
+}
+
+const luminance = (hex) => {
+  const value = (hex || '#ffffff').replace('#', '')
+  const [r, g, b] = [0, 2, 4].map((i) => parseInt(value.slice(i, i + 2), 16) / 255)
+  const lum = [r, g, b].map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4))
+  return 0.2126 * lum[0] + 0.7152 * lum[1] + 0.0722 * lum[2]
+}
+
+/** WCAG contrast ratio between two hex colors (1–21). */
+export const contrastRatio = (a, b) => {
+  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x)
+  return (hi + 0.05) / (lo + 0.05)
+}
+
+/** True when `a` is lighter than `b`. */
+export const isLighter = (a, b) => luminance(a) > luminance(b)
+
+/**
+ * Colors for a QR code that matches its shape: only the sparklet background and one tone of
+ * its hue. The tone is pushed until it has at least `minRatio` contrast with the background,
+ * and codes are always dark-on-light (scanners expect that), so on dark backgrounds the
+ * roles swap: the code is drawn in the background color on a shape-colored plate.
+ */
+export const matchedQrColors = (bg, minRatio = 3.2) => {
+  const [h, s] = toHsl(bg)
+  const sat = s < 8 ? s : Math.max(s, 65)
+  // walk a tone of the background's hue darker or lighter until it contrasts enough
+  const search = (start, step) => {
+    let l = start
+    let tone = hslToHex(h, sat, l)
+    while (contrastRatio(tone, bg) < minRatio && l + step >= 6 && l + step <= 97) {
+      l += step
+      tone = hslToHex(h, sat, l)
+    }
+    return tone
+  }
+  const darker = search(44, -3)
+  const lighter = search(72, 3)
+  const preferLight = contrastInk(bg) === 'dark'
+  const [first, second] = preferLight ? [lighter, darker] : [darker, lighter]
+  let tone = first
+  if (contrastRatio(first, bg) < minRatio && contrastRatio(second, bg) > contrastRatio(first, bg)) tone = second
+  return isLighter(tone, bg)
+    ? { shape: tone, ink: bg, paper: tone, swapped: true }
+    : { shape: tone, ink: tone, paper: bg, swapped: false }
 }

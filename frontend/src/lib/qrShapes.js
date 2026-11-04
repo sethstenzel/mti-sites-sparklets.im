@@ -128,50 +128,72 @@ const paintShape = (ctx, shape, color) => {
   }
 }
 
-/** Largest axis-aligned square inside the silhouette, in 200-unit coordinates (cached). */
+/**
+ * Largest square that fits inside the silhouette, optionally turned 45° (a diamond).
+ * Returns { cx, cy, size } in 200-unit shape coordinates (cached per shape + angle).
+ *
+ * The shape is rasterised in the plate's own frame (rotated by -angle), so the plate is
+ * an axis-aligned square there and a classic "maximal square" DP finds it exactly.
+ */
 const plateCache = {}
-const findPlate = (shape) => {
-  if (plateCache[shape.id]) return plateCache[shape.id]
-  const N = 400
-  const k = N / 200
+const findPlate = (shape, diamond) => {
+  const key = `${shape.id}:${diamond ? 45 : 0}`
+  if (plateCache[key]) return plateCache[key]
+  const k = 2 // raster pixels per shape unit
+  const M = Math.ceil(200 * k * Math.SQRT2) // big enough for the rotated shape
+  const angle = diamond ? -Math.PI / 4 : 0
   const canvas = document.createElement('canvas')
-  canvas.width = canvas.height = N
-  const ctx = canvas.getContext('2d')
+  canvas.width = canvas.height = M
+  const ctx = canvas.getContext('2d', { willReadFrequently: true })
+  ctx.translate(M / 2, M / 2)
+  ctx.rotate(angle)
   ctx.scale(k, k)
+  ctx.translate(-100, -100)
   paintShape(ctx, shape, '#000')
-  const alpha = ctx.getImageData(0, 0, N, N).data
-  // classic "maximal square" dynamic programme over the mask
-  const dp = new Uint16Array(N * N)
+  const alpha = ctx.getImageData(0, 0, M, M).data
+
+  const dp = new Uint16Array(M * M)
   let best = 0
-  for (let y = 0; y < N; y++) {
-    for (let x = 0; x < N; x++) {
-      if (alpha[(y * N + x) * 4 + 3] < 250) continue
-      const i = y * N + x
-      dp[i] = x && y ? Math.min(dp[i - 1], dp[i - N], dp[i - N - 1]) + 1 : 1
+  for (let y = 0; y < M; y++) {
+    for (let x = 0; x < M; x++) {
+      if (alpha[(y * M + x) * 4 + 3] < 250) continue
+      const i = y * M + x
+      dp[i] = x && y ? Math.min(dp[i - 1], dp[i - M], dp[i - M - 1]) + 1 : 1
       if (dp[i] > best) best = dp[i]
     }
   }
-  // among near-largest squares, prefer the one nearest the horizontal centre
+  // among near-largest squares, prefer the one nearest the shape's vertical axis
   let pick = null
-  for (let y = 0; y < N; y++) {
-    for (let x = 0; x < N; x++) {
-      const s = dp[y * N + x]
+  for (let y = 0; y < M; y++) {
+    for (let x = 0; x < M; x++) {
+      const s = dp[y * M + x]
       if (s < best - 2) continue
-      const cx = x - s / 2
-      const score = Math.abs(cx - N / 2) - s * 4
-      if (!pick || score < pick.score) pick = { score, x: x - s + 1, y: y - s + 1, s }
+      // centre back in shape units (undo the rotation)
+      const mx = (x - s / 2 + 0.5 - M / 2) / k
+      const my = (y - s / 2 + 0.5 - M / 2) / k
+      const sx = mx * Math.cos(-angle) - my * Math.sin(-angle) + 100
+      const sy = mx * Math.sin(-angle) + my * Math.cos(-angle) + 100
+      const score = Math.abs(sx - 100) - s * 4
+      if (!pick || score < pick.score) pick = { score, cx: sx, cy: sy, size: s / k }
     }
   }
-  const plate = { x: pick.x / k, y: pick.y / k, size: pick.s / k }
-  plateCache[shape.id] = plate
+  const plate = { cx: pick.cx, cy: pick.cy, size: pick.size }
+  plateCache[key] = plate
   return plate
 }
 
 /**
- * Render a QR code for `text` inside `shapeId`, filled with `color`.
- * Returns a square canvas (transparent around the silhouette).
+ * Render a QR code for `text` inside `shapeId`.
+ *  - color:   fill of the silhouette
+ *  - ink:     QR modules (normally near-black)
+ *  - paper:   the plate behind the code (normally white)
+ *  - diamond: turn the code 45°
+ * Returns a square canvas, transparent around the silhouette.
  */
-export const renderShapedQr = (text, { shapeId = 'plain', color = '#1d1a2b', size = 1200, ink = '#1d1a2b' } = {}) => {
+export const renderShapedQr = (
+  text,
+  { shapeId = 'plain', color = '#1d1a2b', size = 1200, ink = '#1d1a2b', paper = '#ffffff', diamond = false } = {}
+) => {
   const shape = byId[shapeId] || byId.plain
   const qr = QRCode.create(text, { errorCorrectionLevel: 'M' })
   const n = qr.modules.size
@@ -184,42 +206,39 @@ export const renderShapedQr = (text, { shapeId = 'plain', color = '#1d1a2b', siz
 
   let plate
   if (!shape.parts.length) {
-    plate = { x: 4, y: 4, size: 192 }
+    plate = { cx: 100, cy: 100, size: diamond ? 192 / Math.SQRT2 : 192 }
   } else {
     ctx.save()
     ctx.scale(k, k)
     paintShape(ctx, shape, color)
     ctx.restore()
-    const fit = findPlate(shape)
-    const inset = fit.size * 0.06
-    plate = { x: fit.x + inset, y: fit.y + inset, size: fit.size - inset * 2 }
+    const fit = findPlate(shape, diamond)
+    plate = { cx: fit.cx, cy: fit.cy, size: fit.size * 0.88 }
   }
 
-  // white plate with a quiet zone of 2 modules (3 for the plain code)
-  const quiet = shape.parts.length ? 2 : 3
-  const px = plate.x * k
-  const py = plate.y * k
+  // draw the plate and modules in the plate's own (possibly rotated) frame
   const ps = plate.size * k
-  const radius = ps * 0.07
-  ctx.fillStyle = '#ffffff'
+  ctx.save()
+  ctx.translate(plate.cx * k, plate.cy * k)
+  if (diamond) ctx.rotate(Math.PI / 4)
+  ctx.fillStyle = paper
   ctx.beginPath()
-  ctx.roundRect(px, py, ps, ps, radius)
+  ctx.roundRect(-ps / 2, -ps / 2, ps, ps, ps * 0.07)
   ctx.fill()
 
+  // quiet zone of 2 modules (3 for the plain code); all modules filled as one path so
+  // neighbouring squares never show anti-aliased seams, even when rotated
+  const quiet = shape.parts.length ? 2 : 3
   const cell = ps / (n + quiet * 2)
-  const ox = px + quiet * cell
-  const oy = py + quiet * cell
-  ctx.fillStyle = ink
+  const o = -ps / 2 + quiet * cell
+  const modules = new Path2D()
   for (let r = 0; r < n; r++) {
     for (let c = 0; c < n; c++) {
-      if (!cells[r * n + c]) continue
-      // snap to whole pixels and overlap slightly so modules never show hairline seams
-      const x0 = Math.floor(ox + c * cell)
-      const y0 = Math.floor(oy + r * cell)
-      const x1 = Math.ceil(ox + (c + 1) * cell)
-      const y1 = Math.ceil(oy + (r + 1) * cell)
-      ctx.fillRect(x0, y0, x1 - x0, y1 - y0)
+      if (cells[r * n + c]) modules.rect(o + c * cell, o + r * cell, cell, cell)
     }
   }
+  ctx.fillStyle = ink
+  ctx.fill(modules)
+  ctx.restore()
   return canvas
 }
