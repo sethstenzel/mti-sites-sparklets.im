@@ -17,7 +17,7 @@
     </div>
     <figcaption class="note">
       <p class="message" :class="sizeClass">{{ message || messagePlaceholder }}</p>
-      <p class="signature" :class="sigSizeClass">
+      <p class="signature">
         <span>To {{ toName || toPlaceholder }}</span>
         <span>From {{ fromName || fromPlaceholder }}</span>
       </p>
@@ -43,14 +43,6 @@ const props = defineProps({
 })
 
 const alt = computed(() => (props.fromName ? `Photo from ${props.fromName}` : 'Sparklet photo'))
-
-// To and From always share one row; shrink the signature a step when the names are long
-const sigSizeClass = computed(() => {
-  const total = (props.toName || props.toPlaceholder).length + (props.fromName || props.fromPlaceholder).length
-  if (total > 44) return 'sig-sm'
-  if (total > 32) return 'sig-md'
-  return ''
-})
 
 const sizeClass = computed(() => {
   const text = props.message || props.messagePlaceholder
@@ -161,14 +153,6 @@ const sizeClass = computed(() => {
   font-weight: 700;
   line-height: 1.2;
   opacity: 0.82;
-}
-
-.signature.sig-md {
-  font-size: 2.9cqw;
-}
-
-.signature.sig-sm {
-  font-size: 2.5cqw;
 }
 
 .signature span {
