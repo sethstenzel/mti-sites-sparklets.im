@@ -23,6 +23,12 @@ const routes = [
     meta: { title: 'Example sparklet', example: true }
   },
   {
+    path: '/privacy',
+    name: 'Privacy',
+    component: () => import('../views/Privacy.vue'),
+    meta: { title: 'Privacy policy' }
+  },
+  {
     path: '/manage',
     name: 'ManageSparklets',
     component: () => import('../views/ManageSparklets.vue'),

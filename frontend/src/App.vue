@@ -23,6 +23,12 @@
     <router-view />
   </main>
 
+  <footer class="site-footer">
+    <span>© {{ year }} Sparklets</span>
+    <router-link to="/privacy">Privacy</router-link>
+    <a href="mailto:privacy@sparklets.im">Contact</a>
+  </footer>
+
   <nav class="tabbar" aria-label="Main">
     <router-link to="/" class="tab" exact-active-class="active">
       <Icon name="home" /><span>Home</span>
@@ -51,6 +57,7 @@ import Icon from './components/Icon.vue'
 import ThemePicker from './components/ThemePicker.vue'
 import { toasts } from './lib/toast'
 
+const year = new Date().getFullYear()
 const scrolled = ref(false)
 const onScroll = () => {
   scrolled.value = window.scrollY > 4
@@ -169,7 +176,28 @@ onBeforeUnmount(() => window.removeEventListener('scroll', onScroll))
 
 main {
   min-height: calc(100dvh - var(--topbar-h));
-  padding-bottom: var(--tabbar-h);
+}
+
+.site-footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.4rem 1.25rem;
+  padding: 1.5rem 1.25rem calc(1.5rem + var(--tabbar-h) + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--line);
+  color: var(--ink-3);
+  font-size: 0.875rem;
+}
+
+.site-footer a {
+  color: var(--ink-2);
+  text-decoration: none;
+}
+
+.site-footer a:hover {
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 /* ---------- mobile tab bar ---------- */

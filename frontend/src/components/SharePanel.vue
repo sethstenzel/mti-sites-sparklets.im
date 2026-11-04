@@ -89,6 +89,24 @@
           Email
         </button>
       </div>
+
+      <div v-if="messengerHelp" class="messenger-help" role="status">
+        <div class="mh-head">
+          <strong><Icon name="check" /> Link copied</strong>
+          <button type="button" class="mh-close" aria-label="Close" @click="messengerHelp = false">
+            <Icon name="close" />
+          </button>
+        </div>
+        <p>Messenger doesn’t offer a share window on computers, so:</p>
+        <ol>
+          <li>Open Messenger and choose a chat</li>
+          <li>Paste the link (Ctrl+V or ⌘V) and send</li>
+        </ol>
+        <div class="mh-actions">
+          <a class="btn btn-sm btn-primary" href="https://www.messenger.com/" target="_blank" rel="noopener">Open Messenger</a>
+          <button type="button" class="btn btn-sm btn-ghost" @click="copyText(url)">Copy link again</button>
+        </div>
+      </div>
     </div>
 
     <div class="actions">
@@ -128,6 +146,7 @@ const linkId = `link-${Math.random().toString(36).slice(2, 8)}`
 const qrDataUrl = ref('')
 const shapeId = ref('heart')
 const matchColors = ref(false)
+const messengerHelp = ref(false)
 const diamond = ref(false)
 const canShare = typeof navigator !== 'undefined' && !!navigator.share
 
@@ -239,8 +258,14 @@ const shareMessenger = async () => {
     )
     return
   }
-  await copyText(props.url, 'Link copied. Open a Messenger chat and paste it')
-  window.open('https://www.messenger.com/', '_blank', 'noopener')
+  // no desktop share window without an App ID: copy the link and explain the next steps
+  // (the panel itself says "Link copied", so no toast unless copying fails)
+  try {
+    await navigator.clipboard.writeText(props.url)
+    messengerHelp.value = true
+  } catch {
+    messengerHelp.value = await copyText(props.url)
+  }
 }
 
 // Email: a mailto: link can only carry plain text, so we copy a designed email (preview
@@ -599,6 +624,70 @@ legend {
 
 .send-btn.email {
   background: var(--spark);
+}
+
+.messenger-help {
+  margin-top: 0.6rem;
+  padding: 0.9rem 1rem 1rem;
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  font-size: 0.9rem;
+}
+
+.mh-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.mh-head strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--ok);
+}
+
+.mh-head svg {
+  width: 18px;
+  height: 18px;
+}
+
+.mh-close {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ink-2);
+  cursor: pointer;
+}
+
+.mh-close:hover {
+  background: var(--line);
+}
+
+.mh-close svg {
+  width: 16px;
+  height: 16px;
+}
+
+.messenger-help p {
+  margin-top: 0.3rem;
+  color: var(--ink-2);
+}
+
+.messenger-help ol {
+  margin: 0.35rem 0 0.8rem 1.2rem;
+  color: var(--ink);
+}
+
+.mh-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }
 
 .actions {

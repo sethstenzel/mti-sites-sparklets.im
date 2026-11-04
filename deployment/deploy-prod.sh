@@ -49,6 +49,9 @@ tar -C "$STAGE" -xzf "$REL"
 # backups: database + current code
 [ -f backend/sparklets.sqlite ] && cp backend/sparklets.sqlite "backups/sparklets-$STAMP.sqlite"
 tar -czf "backups/code-$STAMP.tgz" backend/*.py backend/pyproject.toml frontend/dist 2>/dev/null || true
+chmod 640 backups/*-"$STAMP".* 2>/dev/null || true
+# keep deploy backups for 30 days (the privacy policy promises this)
+find backups -maxdepth 1 -type f \( -name 'sparklets-*.sqlite' -o -name 'code-*.tgz' \) -mtime +30 -delete
 
 # backend code
 cp "$STAGE"/backend/* backend/

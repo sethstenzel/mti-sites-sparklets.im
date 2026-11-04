@@ -23,6 +23,10 @@
             <Icon name="sparkle" />
             {{ submitting ? 'Creating…' : 'Create sparklet' }}
           </button>
+          <p class="fine-print">
+            Anyone with your sparklet’s link can open it.
+            <router-link to="/privacy">How we handle your photo and message</router-link>
+          </p>
         </form>
       </template>
 
@@ -243,6 +247,18 @@ onBeforeUnmount(() => {
 
 .submit {
   width: 100%;
+}
+
+.fine-print {
+  margin-top: -0.75rem;
+  font-size: 0.825rem;
+  text-align: center;
+  color: var(--ink-3);
+}
+
+.fine-print a {
+  color: var(--ink-2);
+  text-underline-offset: 3px;
 }
 
 .after {
