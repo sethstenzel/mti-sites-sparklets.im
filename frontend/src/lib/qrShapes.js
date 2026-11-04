@@ -129,11 +129,13 @@ const paintShape = (ctx, shape, color) => {
 }
 
 /**
- * Largest square that fits inside the silhouette, optionally turned 45° (a diamond).
- * Returns { cx, cy, size } in 200-unit shape coordinates (cached per shape + angle).
+ * Largest square that fits inside the silhouette, centred on the shape's vertical midline
+ * (x = 100) and optionally turned 45° (a diamond). Returns { cx, cy, size } in 200-unit
+ * shape coordinates (cached per shape + angle).
  *
- * The shape is rasterised in the plate's own frame (rotated by -angle), so the plate is
- * an axis-aligned square there and a classic "maximal square" DP finds it exactly.
+ * The shape is rasterised in the plate's own frame (rotated by -angle) so the plate is an
+ * axis-aligned square there; a summed-area table answers "is this square fully inside?"
+ * in O(1), and we binary-search the size for every height along the midline.
  */
 const plateCache = {}
 const findPlate = (shape, diamond) => {
@@ -152,34 +154,40 @@ const findPlate = (shape, diamond) => {
   paintShape(ctx, shape, '#000')
   const alpha = ctx.getImageData(0, 0, M, M).data
 
-  const dp = new Uint16Array(M * M)
-  let best = 0
+  // summed-area table of "inside" pixels
+  const W1 = M + 1
+  const sat = new Uint32Array(W1 * W1)
   for (let y = 0; y < M; y++) {
+    let row = 0
     for (let x = 0; x < M; x++) {
-      if (alpha[(y * M + x) * 4 + 3] < 250) continue
-      const i = y * M + x
-      dp[i] = x && y ? Math.min(dp[i - 1], dp[i - M], dp[i - M - 1]) + 1 : 1
-      if (dp[i] > best) best = dp[i]
+      row += alpha[(y * M + x) * 4 + 3] >= 250 ? 1 : 0
+      sat[(y + 1) * W1 + x + 1] = sat[y * W1 + x + 1] + row
     }
   }
-  // among near-largest squares, prefer the one nearest the shape's vertical axis
-  let pick = null
-  for (let y = 0; y < M; y++) {
-    for (let x = 0; x < M; x++) {
-      const s = dp[y * M + x]
-      if (s < best - 2) continue
-      // centre back in shape units (undo the rotation)
-      const mx = (x - s / 2 + 0.5 - M / 2) / k
-      const my = (y - s / 2 + 0.5 - M / 2) / k
-      const sx = mx * Math.cos(-angle) - my * Math.sin(-angle) + 100
-      const sy = mx * Math.sin(-angle) + my * Math.cos(-angle) + 100
-      const score = Math.abs(sx - 100) - s * 4
-      if (!pick || score < pick.score) pick = { score, cx: sx, cy: sy, size: s / k }
-    }
+  const inside = (x0, y0, x1, y1) => {
+    if (x0 < 0 || y0 < 0 || x1 > M || y1 > M) return false
+    const sum = sat[y1 * W1 + x1] - sat[y0 * W1 + x1] - sat[y1 * W1 + x0] + sat[y0 * W1 + x0]
+    return sum === (x1 - x0) * (y1 - y0)
   }
-  const plate = { cx: pick.cx, cy: pick.cy, size: pick.size }
-  plateCache[key] = plate
-  return plate
+
+  let best = { cx: 100, cy: 100, size: 0 }
+  for (let cy = 0; cy <= 200; cy += 0.5) {
+    // the point (100, cy) in the rotated raster
+    const dy = (cy - 100) * k
+    const mx = M / 2 - dy * Math.sin(angle)
+    const my = M / 2 + dy * Math.cos(angle)
+    let lo = 0
+    let hi = M
+    while (lo < hi) {
+      const h = (lo + hi + 1) >> 1
+      const ok = inside(Math.floor(mx - h / 2), Math.floor(my - h / 2), Math.floor(mx - h / 2) + h, Math.floor(my - h / 2) + h)
+      if (ok) lo = h
+      else hi = h - 1
+    }
+    if (lo / k > best.size) best = { cx: 100, cy, size: lo / k }
+  }
+  plateCache[key] = best
+  return best
 }
 
 /**
@@ -206,14 +214,15 @@ export const renderShapedQr = (
 
   let plate
   if (!shape.parts.length) {
-    plate = { cx: 100, cy: 100, size: diamond ? 192 / Math.SQRT2 : 192 }
+    plate = { cx: 100, cy: 100, size: diamond ? (192 / Math.SQRT2) * 0.92 : 192 }
   } else {
     ctx.save()
     ctx.scale(k, k)
     paintShape(ctx, shape, color)
     ctx.restore()
     const fit = findPlate(shape, diamond)
-    plate = { cx: fit.cx, cy: fit.cy, size: fit.size * 0.88 }
+    // a diamond reads as larger, so give it a little more breathing room
+    plate = { cx: fit.cx, cy: fit.cy, size: fit.size * (diamond ? 0.8 : 0.88) }
   }
 
   // draw the plate and modules in the plate's own (possibly rotated) frame

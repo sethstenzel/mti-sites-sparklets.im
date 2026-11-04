@@ -44,6 +44,9 @@ MAX_NAME_LENGTH = 20
 MAX_MESSAGE_LENGTH = 140
 MAX_IMAGE_WIDTH = 1000  # 2x the largest card the site renders
 JPEG_QUALITY = 82
+MAX_UPLOAD_BYTES = 12 * 1024 * 1024  # nginx caps bodies at 10 MB; this guards direct access
+MAX_IMAGE_PIXELS = 40_000_000  # ~ 8000 x 5000; larger images are rejected (decompression bombs)
+Image.MAX_IMAGE_PIXELS = MAX_IMAGE_PIXELS
 HEX_COLOR = re.compile(r"^#[0-9a-fA-F]{6}$")
 ANIMATIONS = {"drop", "flip", "twirl", "rise", "pop", "none"}
 DEFAULT_ANIMATION = "drop"
@@ -64,14 +67,19 @@ app = FastAPI(
     description="Backend API for Sparklets.im",
     version="0.2.0",
     lifespan=lifespan,
+    # interactive docs are a dev convenience; don't serve them in production
+    docs_url="/docs" if os.getenv("ENABLE_DOCS") else None,
+    redoc_url=None,
+    openapi_url="/openapi.json" if os.getenv("ENABLE_DOCS") else None,
 )
 
+# The site and API share an origin; CORS only matters for local dev. No cookies are used.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "PUT", "DELETE"],
+    allow_headers=["Content-Type", "X-Admin-Token"],
 )
 
 IMAGES_DIR.mkdir(parents=True, exist_ok=True)
@@ -119,10 +127,16 @@ def hex_to_rgb(value: str) -> tuple[int, int, int]:
 def process_image(data: bytes, matte: str = "#ffffff", max_width: int = MAX_IMAGE_WIDTH) -> bytes:
     """Normalize an upload: fix EXIF rotation, flatten transparency onto the card color,
     cap the width and encode as a compact progressive JPEG (metadata stripped)."""
+    if len(data) > MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail="That photo is too large. Try one under 10 MB.")
     try:
         img = Image.open(BytesIO(data))
+        if img.width * img.height > MAX_IMAGE_PIXELS:
+            raise HTTPException(status_code=400, detail="That photo's dimensions are too large.")
         img = ImageOps.exif_transpose(img)
-    except (UnidentifiedImageError, OSError) as exc:
+    except Image.DecompressionBombError as exc:
+        raise HTTPException(status_code=400, detail="That photo's dimensions are too large.") from exc
+    except (UnidentifiedImageError, OSError, ValueError) as exc:
         raise HTTPException(status_code=400, detail="That file isn't a supported image") from exc
 
     if img.mode in ("RGBA", "LA") or (img.mode == "P" and "transparency" in img.info):

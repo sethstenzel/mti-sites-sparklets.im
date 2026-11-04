@@ -17,7 +17,8 @@
 
 set -euo pipefail
 
-HOST="${DEPLOY_HOST:-appsuser@172.232.21.70}"
+# SSH is only open over Tailscale (mti-sites); override with DEPLOY_HOST if needed
+HOST="${DEPLOY_HOST:-appsuser@100.120.142.3}"
 APP_DIR="/var/www/sparklets.im"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 STAMP="$(date +%Y%m%d-%H%M%S)"

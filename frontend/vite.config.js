@@ -86,7 +86,9 @@ const metaTags = (kind, file) => {
     ['name', 'twitter:title', p.title],
     ['name', 'twitter:description', p.description],
     ['name', 'twitter:image', image],
-    ['name', 'twitter:image:alt', p.alt]
+    ['name', 'twitter:image:alt', p.alt],
+    // sparklet links are private: never list them in search results
+    ...(kind === 'sparklet' ? [['name', 'robots', 'noindex, nofollow']] : [])
   ]
   return tags.map(([attr, key, value]) => `<meta ${attr}="${key}" content="${escapeAttr(value)}">`).join('\n    ')
 }
@@ -135,6 +137,9 @@ const linkPreviews = () => {
 
 export default defineConfig({
   plugins: [vue(), linkPreviews()],
+  define: {
+    __SPARKLET_PREVIEW_URL__: JSON.stringify(`${SITE_URL}/previews/${latestPreviews().sparklet}`)
+  },
   server: {
     port: 18003,
     proxy: {

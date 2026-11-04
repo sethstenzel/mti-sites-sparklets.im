@@ -6,17 +6,7 @@
     <title>Sparklets.im</title>
     <meta name="description" content="Make a little photo note and share it with a link or a QR code.">
     <meta name="theme-color" content="#fbf9fa">
-    <script>
-      // Apply the saved site theme before first paint (no flash of the wrong colors).
-      (function () {
-        var themes = { neutral: '#fbf9fa', blush: '#fbf7fb', slate: '#0e1318' };
-        var id = null;
-        try { id = localStorage.getItem('sparklets.siteTheme'); } catch (e) {}
-        if (!themes[id]) id = 'neutral';
-        document.documentElement.setAttribute('data-theme', id);
-        document.querySelector('meta[name="theme-color"]').setAttribute('content', themes[id]);
-      })();
-    </script>
+    <script src="/theme-init.v1.js"></script>
     <!-- Link previews: generated at build time by vite.config.js (see frontend/previews/README.md) -->
     <!-- link-preview:start -->
     <!-- link-preview:end -->

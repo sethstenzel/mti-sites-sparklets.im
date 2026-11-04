@@ -1,0 +1,19 @@
+# Sparklet links (/s/...) are private: keep search engines out.
+User-agent: *
+Disallow: /s/
+Disallow: /manage
+Disallow: /api/
+
+# Link-preview bots may read sparklet pages; they only ever see the generic
+# "a special message is waiting" preview, never the message itself.
+User-agent: facebookexternalhit
+User-agent: Facebot
+User-agent: meta-externalagent
+User-agent: Twitterbot
+User-agent: Slackbot-LinkExpanding
+User-agent: WhatsApp
+User-agent: TelegramBot
+User-agent: Discordbot
+User-agent: LinkedInBot
+User-agent: Applebot
+Allow: /

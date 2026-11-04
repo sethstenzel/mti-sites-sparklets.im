@@ -84,10 +84,10 @@
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17.8 3h3.1l-6.8 7.7L22 21h-6.2l-4.9-6.4L5.3 21H2.2l7.3-8.3L2 3h6.4l4.4 5.8L17.8 3zm-1.1 16.2h1.7L7.4 4.7H5.6l11.1 14.5z" /></svg>
           X
         </button>
-        <a class="send-btn email" :href="mailtoHref">
+        <button type="button" class="send-btn email" @click="shareEmail">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zm9 7.2L4.3 7H4v.6l8 5.4 8-5.4V7h-.3L12 12.2z" /></svg>
           Email
-        </a>
+        </button>
       </div>
     </div>
 
@@ -218,23 +218,87 @@ const shareFacebook = () => openPopup(`https://www.facebook.com/sharer/sharer.ph
 
 const shareX = () => openPopup(`https://twitter.com/intent/tweet?text=${enc(shareText.value)}&url=${enc(props.url)}`)
 
-// Messenger has no web share link without a registered Facebook app, so on desktop we copy
-// the link and open Messenger for pasting; phones open the Messenger app directly.
+// Messenger:
+//  - phones: the system share sheet (Messenger is listed there); Meta retired the old
+//    fb-messenger:// share link, which now just opens the app
+//  - desktop: Facebook's "Send" dialog, which needs a Facebook App ID (VITE_FB_APP_ID at
+//    build time). Without one there is no desktop share, so we copy the link instead.
+const FB_APP_ID = import.meta.env.VITE_FB_APP_ID || ''
 const shareMessenger = async () => {
-  if (isMobile()) {
-    window.location.href = `fb-messenger://share/?link=${enc(props.url)}`
+  if (isMobile() && navigator.share) {
+    try {
+      await navigator.share({ title: SHARE_TITLE, text: shareText.value, url: props.url })
+    } catch {
+      /* dismissed */
+    }
     return
   }
-  await copyText(props.url, 'Link copied. Paste it into your Messenger chat')
+  if (FB_APP_ID) {
+    openPopup(
+      `https://www.facebook.com/dialog/send?app_id=${enc(FB_APP_ID)}&link=${enc(props.url)}&redirect_uri=${enc(props.url)}`
+    )
+    return
+  }
+  await copyText(props.url, 'Link copied. Open a Messenger chat and paste it')
   window.open('https://www.messenger.com/', '_blank', 'noopener')
 }
 
-const mailtoHref = computed(() => {
+// Email: a mailto: link can only carry plain text, so we copy a designed email (preview
+// image + button + link) as rich HTML and open a new compose window to paste it into.
+const PREVIEW_IMAGE = typeof __SPARKLET_PREVIEW_URL__ !== 'undefined' ? __SPARKLET_PREVIEW_URL__ : ''
+const escapeHtml = (v) => String(v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c])
+
+const emailHtml = () => {
+  const url = escapeHtml(props.url)
+  const hi = props.toName ? `<p style="margin:0 0 16px;font-size:17px">Hi ${escapeHtml(props.toName)},</p>` : ''
+  const sign = props.fromName ? `<p style="margin:20px 0 0;font-size:16px">${escapeHtml(props.fromName)}</p>` : ''
+  return `<div style="max-width:520px;font-family:Arial,Helvetica,sans-serif;color:#1f1a1e;line-height:1.5">
+${hi}<a href="${url}" style="text-decoration:none"><img src="${PREVIEW_IMAGE}" width="520" alt="You’ve got a sparklet. A special message is waiting for you." style="display:block;width:100%;max-width:520px;height:auto;border:0;border-radius:14px"></a>
+<p style="margin:18px 0 14px;font-size:17px">A special message is waiting for you on Sparklets ✨</p>
+<p style="margin:0 0 18px"><a href="${url}" style="display:inline-block;background:#2b2329;color:#ffffff;text-decoration:none;font-weight:bold;font-size:16px;padding:12px 24px;border-radius:999px">Open your sparklet</a></p>
+<p style="margin:0;font-size:13px;color:#5b5258">Or open this link: <a href="${url}" style="color:#5b5258">${url}</a></p>${sign}
+</div>`
+}
+
+const emailText = () => {
   const greeting = props.toName ? `Hi ${props.toName},\n\n` : ''
   const sign = props.fromName ? `\n\n${props.fromName}` : ''
-  const body = `${greeting}A special message is waiting for you on Sparklets. Open it here:\n${props.url}${sign}`
-  return `mailto:?subject=${enc(SHARE_TITLE)}&body=${enc(body)}`
-})
+  return `${greeting}A special message is waiting for you on Sparklets. Open it here:\n${props.url}${sign}`
+}
+
+const openInNewWindow = (href) => {
+  const a = document.createElement('a')
+  a.href = href
+  a.target = '_blank'
+  a.rel = 'noopener'
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+}
+
+const shareEmail = async () => {
+  let rich = false
+  try {
+    if (window.ClipboardItem && navigator.clipboard?.write) {
+      await navigator.clipboard.write([
+        new ClipboardItem({
+          'text/html': new Blob([emailHtml()], { type: 'text/html' }),
+          'text/plain': new Blob([emailText()], { type: 'text/plain' })
+        })
+      ])
+      rich = true
+    }
+  } catch {
+    rich = false
+  }
+  if (rich) {
+    // subject only: the body comes from the pasted, designed email
+    openInNewWindow(`mailto:?subject=${enc(SHARE_TITLE)}`)
+    toast('Email copied. Paste it into the message (Ctrl+V / ⌘V)', { tone: 'ok', duration: 6000 })
+  } else {
+    openInNewWindow(`mailto:?subject=${enc(SHARE_TITLE)}&body=${enc(emailText())}`)
+  }
+}
 
 const nativeShare = async () => {
   try {
