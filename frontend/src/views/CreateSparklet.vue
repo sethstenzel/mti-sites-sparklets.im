@@ -52,7 +52,7 @@
         </button>
       </div>
       <div class="preview-card">
-        <SparkletStage :animation="form.entry_animation" :play-key="playKey">
+        <SparkletStage :animation="form.entry_animation" :play-key="playKey" :burst-color="form.background_color">
           <SparkletCard
             :message="form.message"
             :to-name="form.to_name"

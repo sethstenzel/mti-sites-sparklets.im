@@ -73,7 +73,7 @@
       </div>
       <div class="play-stage" :style="{ background: demoTheme.background_color }">
         <div class="play-card">
-          <SparkletStage :animation="demoAnimation" :play-key="playKey">
+          <SparkletStage :animation="demoAnimation" :play-key="playKey" :burst-color="demoTheme.background_color">
             <SparkletCard
               message="You’re my favorite person to get lost with."
               to-name="Robin"

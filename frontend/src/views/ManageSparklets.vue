@@ -84,7 +84,7 @@
       <form v-if="editing" class="edit" @submit.prevent="saveEdit">
         <div class="edit-preview" :style="{ background: editData.background_color }">
           <div class="edit-card">
-            <SparkletStage :animation="editData.entry_animation" :play-key="editPlayKey" :float="false">
+            <SparkletStage :animation="editData.entry_animation" :play-key="editPlayKey" :float="false" :burst-color="editData.background_color">
               <SparkletCard
                 :message="editData.message"
                 :to-name="editData.to_name"
@@ -530,6 +530,7 @@ code {
   display: grid;
   place-items: center;
   aspect-ratio: 1;
+  overflow: hidden;
   border-radius: var(--radius-lg);
 }
 

@@ -3,8 +3,8 @@
     <div class="float">
       <slot />
     </div>
-    <div v-if="safeAnimation === 'pop'" class="burst" aria-hidden="true">
-      <span v-for="n in 10" :key="n" :style="{ '--i': n }"></span>
+    <div v-if="safeAnimation === 'pop'" class="burst" :style="burstStyle" aria-hidden="true">
+      <span v-for="n in 12" :key="n" :style="{ '--i': n }"></span>
     </div>
   </div>
 </template>
@@ -12,12 +12,21 @@
 <script setup>
 import { computed, nextTick, ref, watch } from 'vue'
 import { isAnimation } from '../lib/animations'
+import { tonesOf } from '../lib/themes'
 
 const props = defineProps({
   animation: { type: String, default: 'drop' },
   float: { type: Boolean, default: true },
   // change this value to replay the entrance
-  playKey: { type: [String, Number], default: 0 }
+  playKey: { type: [String, Number], default: 0 },
+  // the sparklet's background color; the pop sparkles use tones of it
+  burstColor: { type: String, default: '' }
+})
+
+const burstStyle = computed(() => {
+  if (!props.burstColor) return {}
+  const [a, b] = tonesOf(props.burstColor)
+  return { '--burst-a': a, '--burst-b': b }
 })
 
 const safeAnimation = computed(() => (isAnimation(props.animation) ? props.animation : 'drop'))
@@ -116,36 +125,47 @@ watch(
 
 /* ---------- sparkle burst for "pop" ---------- */
 
+.float {
+  position: relative;
+  z-index: 1;
+}
+
+/* sparkles start behind the card and fly out past its edges */
 .burst {
   position: absolute;
   inset: 0;
+  z-index: 0;
   pointer-events: none;
 }
 
 .burst span {
-  --angle: calc(var(--i) * 36deg);
+  --angle: calc(var(--i) * 30deg + 8deg);
+  --dist: 78cqw;
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 14px;
-  height: 14px;
-  margin: -7px;
-  background: var(--accent-2);
+  width: 7cqw;
+  height: 7cqw;
+  margin: -3.5cqw;
+  background: var(--burst-a, var(--accent-2));
   clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%);
   opacity: 0;
-  animation: burst 0.9s 0.15s ease-out both;
+  animation: burst 1.1s 0.12s cubic-bezier(0.15, 0.7, 0.3, 1) both;
 }
 
 .burst span:nth-child(even) {
-  background: var(--spark);
-  width: 10px;
-  height: 10px;
-  margin: -5px;
+  --dist: 92cqw;
+  background: var(--burst-b, var(--spark));
+  width: 4.5cqw;
+  height: 4.5cqw;
+  margin: -2.25cqw;
 }
 
 @keyframes burst {
-  0% { opacity: 1; transform: rotate(var(--angle)) translateY(0) scale(0.4); }
-  100% { opacity: 0; transform: rotate(var(--angle)) translateY(-62cqw) scale(1.2); }
+  0% { opacity: 0; transform: rotate(var(--angle)) translateY(-20cqw) scale(0.3); }
+  15% { opacity: 1; }
+  70% { opacity: 1; }
+  100% { opacity: 0; transform: rotate(var(--angle)) translateY(calc(var(--dist) * -1)) scale(1) rotate(90deg); }
 }
 
 /* ---------- idle hover ---------- */

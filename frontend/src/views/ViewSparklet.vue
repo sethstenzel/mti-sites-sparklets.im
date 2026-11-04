@@ -29,7 +29,7 @@
       </header>
 
       <div class="card-slot">
-        <SparkletStage :animation="sparklet.entry_animation" :play-key="playKey">
+        <SparkletStage :animation="sparklet.entry_animation" :play-key="playKey" :burst-color="sparklet.background_color">
           <SparkletCard
             :message="sparklet.message"
             :to-name="sparklet.to_name"
