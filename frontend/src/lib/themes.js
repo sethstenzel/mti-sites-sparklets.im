@@ -11,7 +11,7 @@ export const themes = [
   { name: 'Chinese New Year', background_color: '#c3161c', card_color: '#ffe7a3', text_color: '#9e1515' },
   { name: 'St. Patrick’s', background_color: '#2f9e5a', card_color: '#f2fff5', text_color: '#165c33' },
   { name: 'Easter', background_color: '#e5dcff', card_color: '#fffbe3', text_color: '#5a4a9c' },
-  { name: 'Cherry blossom', background_color: '#fbd3e0', card_color: '#fff8fa', text_color: '#9c2f5a' },
+  { name: 'Cherry Blossom', background_color: '#fbd3e0', card_color: '#fff8fa', text_color: '#9c2f5a' },
   { name: 'Seaside', background_color: '#a8e1ef', card_color: '#fffbf0', text_color: '#0f5a74' },
   { name: 'Birthday', background_color: '#ffe066', card_color: '#ffffff', text_color: '#b8124e' },
   { name: 'Halloween', background_color: '#221a2b', card_color: '#ff8a2a', text_color: '#221a2b' },
