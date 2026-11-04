@@ -4,7 +4,7 @@
       <div class="hero-copy">
         <h1>Little photo notes that open with a&nbsp;scan.</h1>
         <p class="lede">
-          Pick a photo, write up to 100 characters, and send it as a link or a printable QR code.
+          Pick a photo, write up to 138 characters, and send it as a link or a printable QR code.
           No accounts, no app to install.
         </p>
         <div class="cta">
@@ -42,7 +42,7 @@
         <li>
           <span class="step-n">2</span>
           <h3>Write the note</h3>
-          <p>Up to 100 characters. Choose the colors, a tilt, and how the card makes its entrance.</p>
+          <p>Up to 138 characters. Choose the colors, a tilt, and how the card makes its entrance.</p>
         </li>
         <li>
           <span class="step-n">3</span>

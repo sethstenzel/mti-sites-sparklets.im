@@ -7,7 +7,7 @@
           v-model="model.to_name"
           class="input"
           type="text"
-          maxlength="100"
+          :maxlength="MAX_NAME_LENGTH"
           required
           autocomplete="off"
           placeholder="Who’s it for?"
@@ -20,7 +20,7 @@
           v-model="model.from_name"
           class="input"
           type="text"
-          maxlength="100"
+          :maxlength="MAX_NAME_LENGTH"
           required
           autocomplete="nickname"
           placeholder="Your name"
@@ -37,7 +37,7 @@
       <textarea
         v-model="model.message"
         class="input"
-        maxlength="100"
+        :maxlength="MAX_MESSAGE_LENGTH"
         rows="3"
         required
         placeholder="Say something that’ll make their day"
@@ -104,10 +104,11 @@
 <script setup>
 import { computed } from 'vue'
 import { themes, matchesTheme } from '../lib/themes'
+import { MAX_MESSAGE_LENGTH, MAX_NAME_LENGTH } from '../lib/limits'
 
 const model = defineModel({ type: Object, required: true })
 
-const remaining = computed(() => 100 - (model.value.message?.length || 0))
+const remaining = computed(() => MAX_MESSAGE_LENGTH - (model.value.message?.length || 0))
 const isCustom = computed(() => !themes.some((t) => matchesTheme(model.value, t)))
 
 const applyTheme = (theme) => {

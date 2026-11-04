@@ -47,6 +47,7 @@ const alt = computed(() => (props.fromName ? `Photo from ${props.fromName}` : 'S
 const sizeClass = computed(() => {
   const text = props.message || props.messagePlaceholder
   const lines = text.split('\n').length
+  if (text.length > 100 || lines > 3) return 'is-xlong'
   if (text.length > 70 || lines > 2) return 'is-long'
   if (text.length > 36) return 'is-medium'
   return 'is-short'
@@ -138,10 +139,17 @@ const sizeClass = computed(() => {
   font-size: 4.3cqw;
 }
 
+.message.is-xlong {
+  font-size: 3.8cqw;
+  line-height: 1.14;
+}
+
 .signature {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
-  gap: 3cqw;
+  column-gap: 3cqw;
+  row-gap: 0.4cqw;
   padding-top: 1.2cqw;
   font-size: 3.4cqw;
   font-weight: 700;
@@ -149,7 +157,12 @@ const sizeClass = computed(() => {
   opacity: 0.82;
 }
 
+.signature span:last-child {
+  margin-left: auto;
+}
+
 .signature span {
+  max-width: 100%;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
